@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101a22" />
+  <title>PYTHON DUNGEON — โค้ดเพื่อพิชิตดันเจี้ยน</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css?v=2" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" id="homeBtn" aria-label="กลับไปหน้าแผนที่"><span class="brand-mark">⌘</span><span>PYTHON<span class="brand-accent">DUNGEON</span></span></button>
+      <div class="topbar-right"><span id="chapterTag" class="chapter-tag">CODE • CONQUER • LEARN</span><span id="wallet" class="wallet">✦ 0</span><button id="soundBtn" class="icon-btn" title="เปิดหรือปิดเสียง">♫</button></div>
+    </header>
+    <main id="app" aria-live="polite"></main>
+    <footer class="footer"><span>PYTHON DUNGEON <em>v1.2</em></span><span>เขียนโค้ดจริง • เรียนรู้ทีละชั้น • พิชิตบอส</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="./game.js?v=2"></script>
+</body>
+</html>
