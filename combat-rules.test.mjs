@@ -7,7 +7,7 @@ assert.equal(enemyIntent(1,2).shield,true);
 assert.equal(enemyIntent(2,2).web,true);
 assert.equal(enemyIntent(3,2).drain,3);
 assert.equal(enemyIntent(3,2).heal,10);
-assert.equal(enemyIntent(4,2).damage,33);
+assert.equal(enemyIntent(4,2).damage,35);
 assert.equal(enemyIntent(5,2).poison,5);
 for(const id of ['adventurer','knight','wizard']) for(let level=0;level<6;level++) {
  const normal=attackDamage(id,level,0,2,false);

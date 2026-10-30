@@ -1,4 +1,4 @@
-const ICONS = { attack:'S_Sword01.png', double_strike:'S_Dagger02.png', shield_bash:'shield.svg', fireball:'S_Fire03.png', poison:'S_Poison02.png', web:'S_Poison07.png', curse:'S_Shadow03.png', stone:'S_Earth03.png', mana:'P_Blue01.png', shield:'shield.svg' };
+const ICONS = { attack:'S_Sword01.png', double_strike:'S_Dagger02.png', smoke_blade:'S_Shadow04.png', iron_oath:'shield.svg', frost_lance:'S_Ice03.png', shield_bash:'shield.svg', fireball:'S_Fire03.png', poison:'S_Poison02.png', web:'S_Poison07.png', curse:'S_Shadow03.png', stone:'S_Earth03.png', mana:'P_Blue01.png', shield:'shield.svg', health:'P_Red01.png', armor:'A_Armour01.png', focus:'S_Buff01.png', blind:'S_Shadow04.png', frost:'S_Ice03.png', bleed:'bleed.svg', inn:'inn.svg', hint:'I_Book.png' };
 export function skillIcon(key) {
   return `<img class="skill-icon" src="./assets/icons/${ICONS[key] || ICONS.attack}" alt="" aria-hidden="true">`;
 }
@@ -9,8 +9,9 @@ const HEROES = {
 };
 // Preload portraits without blocking first play.
 const portrait = new Image(); portrait.src = './assets/cutin-portraits.png';
-export async function playCutscene(classId) {
-  const hero = HEROES[classId];
+export async function playCutscene(classId, skill = null) {
+  const hero = {...HEROES[classId]};
+  if(skill) {hero.name=skill.name;hero.english=skill.id==='fireball'?hero.english:skill.id.replaceAll('_',' ').toUpperCase();}
   const overlay = document.createElement('div');
   overlay.className = `skill-cutscene cutscene-${classId}`;
   overlay.style.setProperty('--cut-color',hero.color);
@@ -40,7 +41,7 @@ export async function playCombatMotion(role, variant, impact) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const a=fighter.getBoundingClientRect(), b=target.getBoundingClientRect();
   const direction=role==='hero'?1:-1;
-  const melee = variant==='attack' || variant==='double_strike' || variant==='shield_bash';
+  const melee = ['attack','double_strike','shield_bash','smoke_blade','iron_oath'].includes(variant);
   const distance = melee ? Math.max(0,Math.abs((a.left+a.width/2)-(b.left+b.width/2))-a.width*.5) * direction : 0;
   const duration = reduced ? 300 : variant==='double_strike'?1050:melee?800:1200;
   fighter.dataset.motion = melee?'attack':'cast';
@@ -61,7 +62,7 @@ export async function playCombatMotion(role, variant, impact) {
   if(!melee && !reduced) {
     const scene=fighter.parentElement, bounds=scene.getBoundingClientRect();
     projectile=document.createElement('span');
-    projectile.className='combat-projectile '+(variant==='fireball'?'projectile-fire':role==='enemy'?'projectile-dark':'projectile-arcane');
+    projectile.className='combat-projectile '+(variant==='fireball'?'projectile-fire':variant==='frost_lance'?'projectile-frost':role==='enemy'?'projectile-dark':'projectile-arcane');
     projectile.style.left=(a.left+a.width*.6-bounds.left)+'px';
     projectile.style.top=(a.top+a.height*.4-bounds.top)+'px';
     scene.append(projectile);

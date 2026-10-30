@@ -32,3 +32,11 @@ Source: https://opengameart.org/content/496-pixel-art-icons-for-medievalfantasy-
 - Pixel animation fundamentals: https://www.sandromaglione.com/articles/pixel-art-character-animations-guide
 - Sprite timing and frames: https://aseprite.com/docs/animation/
 - Dark dungeon soundtrack reference (study only, not bundled): Stuart Chatwood's official Darkest Dungeon II soundtrack, https://stuartchatwood.com/store
+
+## NPC locations and interface v1.6
+
+`assets/npc-locations.png` is new project art generated using the built-in Imagegen tool. Prompt: a two-column original pixel-art scene atlas — a welcoming copper-bearded merchant with spectacles behind a potion/weapon counter, and an auburn-haired innkeeper behind a timber reception desk with a hearth and bed alcove. Equal-width panels, expressive waist-up NPCs, warm lantern light, deep blue shadows, crisp JRPG pixel clusters, no words or UI. CSS supplies Thai dialogue and interaction. Source generation: `exec-27238a02-68b2-4b1d-9bca-d56c4f220f53.png`; final saved project asset: `assets/npc-locations.png`.
+
+Additional potion, armour, focus, ice, shadow and book icons keep their original filenames from the same CC0 496 RPG icons source listed above. `assets/icons/bleed.svg` and `assets/icons/inn.svg` are original project pixel-style SVG artwork.
+
+Interaction references: https://www.roblox.com/games/80734098185936/An-Average-Campaign and https://dl.degica.com/rpgmakerweb/tutorials/RPGVX_Tutorial_Level_7.pdf . No models, UI assets, or game code from Roblox are redistributed.

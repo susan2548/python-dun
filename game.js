@@ -6,8 +6,10 @@ import {
   switchTrack,
 } from "./audio-engine.js?v=3";
 import { mountSpriteMotion } from "./sprite-motion.js?v=3";
-import { MONSTERS, enemyIntent, attackDamage, incomingDamage } from "./combat-rules.js?v=1";
-import { playCutscene, playCombatMotion, skillIcon } from "./combat-cinema.js?v=1";
+import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=2";
+import { playCutscene, playCombatMotion, skillIcon } from "./combat-cinema.js?v=2";
+import { SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js";
 const LEVELS = [
   {
     name: "ประตูดันเจี้ยน",
@@ -82,7 +84,7 @@ const CLASSES = {
     atk: 10,
     skill: "double_strike",
     skillName: "ฟันสองจังหวะ",
-    skillDesc: "โจมตีแรงขึ้น • ใช้ 5 MP",
+    skillDesc: "เลือดไหล 45% • ใช้ 3 MP / CD 2",
     flavor: "คล่องตัวและสมดุล เหมาะกับการเริ่มสำรวจ",
   },
   knight: {
@@ -93,7 +95,7 @@ const CLASSES = {
     atk: 11,
     skill: "shield_bash",
     skillName: "กระแทกโล่",
-    skillDesc: "โจมตีพร้อมตั้งรับ • ใช้ 5 MP",
+    skillDesc: "โจมตีพร้อมตั้งรับ • 3 MP / CD 2",
     flavor: "เลือดสูงและรับความเสียหายได้ดี",
   },
   wizard: {
@@ -104,7 +106,7 @@ const CLASSES = {
     atk: 8,
     skill: "fireball",
     skillName: "ลูกไฟเวท",
-    skillDesc: "เวทไฟรุนแรง • ใช้ 6 MP",
+    skillDesc: "เผาไหม้ 55% • 3 MP / ไม่มีคูลดาวน์",
     flavor: "เลือดน้อย แต่โจมตีด้วยเวทได้แรง",
   },
 };
@@ -145,6 +147,8 @@ let screen = "intro",
   workerPending = new Map();
 const app = $("#app");
 function persist() {
+  // Commit a whole turn atomically. Reload cannot replay the attack before its counter.
+  if(screen==='battle' && battle?.busy) {updateBar();return;}
   if (screen === "battle" && battle && !battle.rescued) {
     save.expedition = { hp: battle.hp, mp: battle.mp, maxHp: battle.maxHp, maxMp: battle.maxMp };
     save.activeBattle = battle.finished ? null : { ...battle, busy: false, code: "" };
@@ -166,6 +170,12 @@ function updateBar() {
       ? `FLOOR ${String(battle.level + 1).padStart(2, "0")} / 06`
       : "CODE • CONQUER • LEARN";
   if (!muted) $("#soundBtn").title = `ปิดเสียง • ${currentTrackName()}`;
+  if(screen==='map' && $('.map-side .stat-grid')) {
+    const c=CLASSES[save.classId],values=[c.hp+save.hpBonus,c.atk+save.attackBonus,save.potions,save.gold];
+    $('.map-side .stat-grid').querySelectorAll('b').forEach((b,i)=>b.textContent=values[i]);
+    const v=getVitals();
+    if($('.expedition-vitals'))$('.expedition-vitals').innerHTML=`♥ HP ${v.hp}/${v.maxHp} · ◆ MP ${v.mp}/${v.maxMp}<small>พลังคงเหลือต่อเนื่องทุกชั้น • ไม่มีฟื้นอัตโนมัติ</small>`;
+  }
 }
 function toast(message) {
   let t = $("#toast");
@@ -210,32 +220,17 @@ function runPython(code, challenge, skillName) {
   });
 }
 function renderIntro() {
-  screen = "intro";
-  window.scrollTo(0, 0);
-  updateBar();
-  app.innerHTML = `<section class="intro"><div class="intro-copy"><span class="eyebrow">A CODE-POWERED DUNGEON RPG</span><h1 class="pixel-title">PYTHON<br><span>DUNGEON</span></h1><p class="intro-lead">เขียน Python เพื่อโจมตี ร่ายสกิล และฝ่าดันเจี้ยนทั้ง 6 ชั้น เรียนรู้จากพื้นฐานจนถึงคลาสผ่านการต่อสู้แบบเทิร์นเบส</p><div class="feature-list"><span>▣ Python รันจริง</span><span>⚔ ต่อสู้เทิร์นเบส</span><span>⌁ 6 ชั้น / 6 หัวข้อ</span><span>✦ ร้านค้าและอัปเกรด</span></div><div class="class-select"><h3>เลือกอาชีพของคุณ</h3><div class="class-cards">${Object.entries(
-    CLASSES,
-  )
-    .map(
-      ([id, c]) =>
-        `<button class="class-card ${selected === id ? "selected" : ""}" data-class="${id}"><span class="class-icon">${c.icon}</span><strong>${c.name}</strong><small>${c.flavor}</small></button>`,
-    )
-    .join(
-      "",
-    )}</div></div><div class="intro-actions"><button class="btn" id="startBtn">${save.classId ? "กลับสู่แผนที่" : "เริ่มผจญภัย"} →</button><small>บันทึกความคืบหน้าในเบราว์เซอร์เครื่องนี้อัตโนมัติ</small></div></div><div class="hero-visual"><div class="hero-sprite" id="introHero" style="background-position:${["adventurer", "knight", "wizard"].indexOf(selected) * 50}% center"></div><div class="monster-sprite"></div><div class="visual-caption"><span>HERO SELECT</span><span>FLOOR 01 / 06</span></div></div></section>`;
-  document.querySelectorAll("[data-class]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        selected = b.dataset.class;
-        renderIntro();
-      }),
-  );
-  $("#startBtn").onclick = () => {
-    save.classId = selected;
-    persist();
-    beep(660);
-    renderMap();
-  };
+  screen='intro'; window.scrollTo(0,0);updateBar();
+  renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,
+    onSelect:id=>{if(save.activeBattle&&id!==save.classId)return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');selected=id;renderIntro();},
+    onStart:()=>{
+      if(save.classId&&save.classId!==selected) {
+        const old=getVitals(),next=CLASSES[selected];
+        save.expedition={hp:Math.ceil(old.hp/old.maxHp*(next.hp+save.hpBonus)),mp:Math.floor(old.mp/old.maxMp*next.mp),maxHp:next.hp+save.hpBonus,maxMp:next.mp};
+      }
+      save.classId=selected;persist();beep();renderMap();
+    }
+  });
 }
 function renderMap() {
   if (screen === "battle" && battle) persist();
@@ -274,6 +269,7 @@ function renderMap() {
   const vitals = getVitals();
   $(".map-side .stat-grid").insertAdjacentHTML("afterend", `<div class="expedition-vitals">♥ HP ${vitals.hp}/${vitals.maxHp} · ◆ MP ${vitals.mp}/${vitals.maxMp}<small>พลังคงเหลือต่อเนื่องทุกชั้น • ไม่มีฟื้นอัตโนมัติ</small></div><button class="btn ghost small" id="campBtn">พักแรม ✦ 30 · +55 HP / +6 MP</button>`);
   $("#campBtn").onclick = restAtCamp;
+  $('#campBtn').innerHTML=skillIcon('inn')+' โรงแรมแสงตะเกียง →';
   if(save.activeBattle) {
     const level=save.activeBattle.level;
     $('.map-guide').textContent=`มีการต่อสู้ค้างอยู่: ชั้น ${level+1} ${LEVELS[level].name} • เลือด มานา และโจทย์ยังอยู่เหมือนเดิม`;
@@ -289,13 +285,17 @@ function getVitals() {
   return { hp: clamp(save.expedition.hp, 0, maxHp), mp: clamp(save.expedition.mp, 0, maxMp), maxHp, maxMp };
 }
 function restAtCamp() {
-  if (save.activeBattle) return toast('ยังมีการต่อสู้ค้างอยู่ จบการต่อสู้ก่อนพักแรม');
-  const v = getVitals();
-  if (v.hp === v.maxHp && v.mp === v.maxMp) return toast('พลังเต็มอยู่แล้ว');
-  if (save.gold < 30) return toast('พักแรมต้องใช้ 30 เหรียญ');
-  save.gold -= 30;
-  save.expedition = {...v, hp:Math.min(v.maxHp, v.hp+55), mp:Math.min(v.maxMp, v.mp+6)};
-  persist(); renderMap(); toast('พักแล้ว: ฟื้นได้สูงสุด 55 HP และ 6 MP');
+  const vitals=getVitals();
+  openInn({save,vitals,blocked:!!save.activeBattle,showModal,onRest:()=>{
+    if(save.activeBattle)return toast('จบการต่อสู้ก่อนเข้าพัก');
+    const v=getVitals();
+    if(v.hp===v.maxHp&&v.mp===v.maxMp)return;
+    if(save.gold<30)return toast('เหรียญไม่พอ');
+    save.gold-=30;
+    save.expedition={...v,hp:Math.min(v.maxHp,v.hp+55),mp:Math.min(v.maxMp,v.mp+6)};
+    persist();renderMap();restAtCamp();
+    $('#npcSpeech').textContent='หลับสบายดีไหม? ข้าฟื้นพลังให้แล้ว ขอให้เจ้ากลับมาถึงที่นี่อย่างปลอดภัยนะ';
+  }});
 }
 function showResetPrompt() {
   showModal(
@@ -311,65 +311,31 @@ function showResetPrompt() {
   };
 }
 function showClassPicker() {
-  showModal(
-    `<span class="eyebrow">CHANGE YOUR HERO</span><h2 class="pixel-title">เลือกอาชีพ</h2><div class="shop-grid">${Object.entries(
-      CLASSES,
-    )
-      .map(
-        ([id, c]) =>
-          `<button class="class-card ${save.classId === id ? "selected" : ""}" data-pick="${id}"><span class="class-icon">${c.icon}</span><strong>${c.name}</strong><small>${c.flavor}<br>${c.skillName}</small></button>`,
-      )
-      .join(
-        "",
-      )}</div><p>เปลี่ยนอาชีพรักษาสัดส่วน HP/MP เดิม ไม่ฟื้นพลัง และเปลี่ยนไม่ได้ระหว่างการต่อสู้</p><div class="modal-actions"><button class="btn ghost" data-close>ปิด</button></div>`,
-  );
-  document.querySelectorAll("[data-pick]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        if (save.activeBattle) return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');
-        const old = getVitals();
-        save.classId = b.dataset.pick;
-        const next = CLASSES[save.classId];
-        save.expedition = {hp:Math.ceil(old.hp/old.maxHp*(next.hp+save.hpBonus)), mp:Math.floor(old.mp/old.maxMp*next.mp), maxHp:next.hp+save.hpBonus, maxMp:next.mp};
-        for (let i = 0; i < 6; i++)
-          sessionStorage.removeItem("dungeon-code-" + i);
-        persist();
-        closeModal();
-        renderMap();
-        toast("เปลี่ยนอาชีพแล้ว");
-      }),
-  );
+  openHeroHall({classes:CLASSES,current:save.classId,blocked:!!save.activeBattle,showModal,onConfirm:id=>{
+    if(save.activeBattle)return toast('จบการต่อสู้ก่อนเปลี่ยนอาชีพ');
+    const old=getVitals(),next=CLASSES[id];save.classId=id;
+    save.expedition={hp:Math.ceil(old.hp/old.maxHp*(next.hp+save.hpBonus)),mp:Math.floor(old.mp/old.maxMp*next.mp),maxHp:next.hp+save.hpBonus,maxMp:next.mp};
+    persist();closeModal();renderMap();toast('เลือก '+next.name+' แล้ว • รักษาสัดส่วนพลังเดิม');
+  }});
 }
-function showShop() {
-  closeModal();
-  showModal(
-    `<span class="eyebrow">DUNGEON MERCHANT</span><h2 class="pixel-title">ร้านค้านักเดินทาง</h2><p>เหรียญของคุณ: <b style="color:var(--gold)">✦ ${save.gold}</b> • ซื้อของเพื่อเตรียมลงชั้นถัดไปหรือเล่นซ้ำ</p><div class="shop-grid"><div class="shop-item"><h3>🧪 ยาฟื้นพลัง</h3><p>กดใช้ยาในหน้าต่อสู้ ฟื้น 45 HP (ศัตรูโจมตีกลับ)</p><span class="price">✦ 25</span><br><button class="btn small" data-buy="potion" ${save.gold < 25 ? "disabled" : ""}>ซื้อ</button></div><div class="shop-item"><h3>⚔ ลับอาวุธ</h3><p>พลังโจมตีถาวร +2</p><span class="price">✦ 60</span><br><button class="btn small" data-buy="attack" ${save.gold < 60 ? "disabled" : ""}>ซื้อ</button></div><div class="shop-item"><h3>♥ เกราะหัวใจ</h3><p>HP สูงสุดถาวร +15</p><span class="price">✦ 55</span><br><button class="btn small" data-buy="hp" ${save.gold < 55 ? "disabled" : ""}>ซื้อ</button></div><div class="shop-item"><h3>⌁ คำแนะนำ</h3><p>ดูคำใบ้แนวคิดได้ฟรีในหน้าต่อสู้</p><span class="price">FREE</span></div></div><div class="modal-actions"><button class="btn ghost" data-close>กลับแผนที่</button></div>`,
-  );
-  modal.querySelector('.shop-grid').insertAdjacentHTML('beforeend', `<div class="shop-item"><h3>${skillIcon('mana')} ยามานา</h3><p>ฟื้น 6 MP ใช้แล้วศัตรูสวนกลับ</p><span class="price">✦ 18</span><br><button class="btn small" id="buyMana">ซื้อ</button></div>`);
-  $('#buyMana').onclick = () => { if(save.gold<18) return toast('เหรียญไม่พอ'); save.gold-=18; save.manaPotions++; persist(); showShop(); };
-  document.querySelectorAll("[data-buy]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        let item = b.dataset.buy,
-          cost = item === "potion" ? 25 : item === "attack" ? 60 : 55;
-        if (save.gold < cost) return;
-        save.gold -= cost;
-        if (item === "potion") save.potions++;
-        if (item === "attack") save.attackBonus += 2;
-        if (item === "hp") save.hpBonus += 15;
-        persist();
-        beep(850);
-        showShop();
-        toast("ซื้อสำเร็จ!");
-      }),
-  );
-}
+function showShop() { openMerchant({save,showModal,persist}); }
 function showModal(html) {
   closeModal();
   modal = document.createElement("div");
   modal.className = "modal-backdrop";
   modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
   document.body.append(modal);
+  const previousFocus=document.activeElement;
+  modal.previousFocus=previousFocus;
+  modal.onkeydown=e=>{
+    if(e.key==='Escape'){e.preventDefault();closeModal();return;}
+    if(e.key!=='Tab')return;
+    const controls=[...modal.querySelectorAll('button:not(:disabled),a[href],[tabindex="0"]')];
+    if(!controls.length)return;
+    if(e.shiftKey&&document.activeElement===controls[0]){e.preventDefault();controls.at(-1).focus();}
+    else if(!e.shiftKey&&document.activeElement===controls.at(-1)){e.preventDefault();controls[0].focus();}
+  };
+  modal.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
   modal
     .querySelectorAll("[data-close]")
     .forEach((b) => (b.onclick = closeModal));
@@ -378,8 +344,10 @@ function showModal(html) {
   };
 }
 function closeModal() {
+  const previousFocus=modal?.previousFocus;
   modal?.remove();
   modal = null;
+  if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
 }
 function startBattle(index) {
   if (index > save.cleared) return;
@@ -389,7 +357,7 @@ function startBattle(index) {
   if (save.activeBattle) {
     if (save.activeBattle.level !== index) return toast('มีการต่อสู้ค้างอยู่ที่ชั้น '+(save.activeBattle.level+1)+' กลับไปจบก่อน');
     battle = {...save.activeBattle, busy:false};
-    screen = 'battle'; renderBattle(); return;
+    screen = 'battle'; renderBattle(); persist(); return;
   }
   const vitals = getVitals();
   if (vitals.hp <= 0) return toast('พลังหมดแล้ว กลับไปพักฟื้นก่อน');
@@ -429,6 +397,7 @@ function spritePosition(n) {
   return `${(n % 3) * 50}% ${Math.floor(n / 3) * 100}%`;
 }
 function renderBattle(shouldScroll = true) {
+  ensureTactics(battle);normalizeSkill(battle,save.classId);
   const l = LEVELS[battle.level],
     c = CLASSES[save.classId];
   if (shouldScroll) window.scrollTo(0, 0);
@@ -447,13 +416,16 @@ function renderBattle(shouldScroll = true) {
   mountSpriteMotion(["adventurer", "knight", "wizard"].indexOf(save.classId), l.sprite);
   $('.challenge-head strong').textContent = battle.phase < 3 ? `โจทย์ ${battle.phase+1} / 3` : `ทำลายตราผนึก • รอบ ${battle.phase-2}`;
   $('.challenge-head span').textContent = '●'.repeat(Math.min(battle.phase,3)) + '○'.repeat(Math.max(0,3-battle.phase));
-  $('.skill-box strong').innerHTML = `${skillIcon(c.skill)} สกิลอาชีพ: ${c.skillName}`;
-  $('.skill-box p').innerHTML = `${c.skillDesc}<br>ใช้ <code>skill("${c.skill}", พลัง)</code> แทน attack() ได้ทุกโจทย์ • ใช้ MP คงเหลือจริง`;
-  $('.action-hint').innerHTML = `ใช้ <code>attack(พลัง)</code> / <code>skill("${c.skill}", พลัง)</code><br>ผ่าน 3 บทเรียนแล้วต้องลด HP ศัตรูให้หมด • MP ไม่ฟื้นอัตโนมัติ`;
-  $('.battle-info').insertAdjacentHTML('afterbegin', `<div class="tactics-panel"><div id="enemyIntent"></div><p>${MONSTERS[battle.level].description}</p><div id="statusLine"></div><button class="btn ghost small" id="stanceBtn">ตั้งรับ: ${battle.stance?'เปิด':'ปิด'} · 2 MP</button><small>ตั้งรับลดดาเมจที่รับ 60% แต่โจมตีเบาลง 20% • ผิด 2 ครั้งแรกฝึกฟรี หลังจากนั้นศัตรูสวนทุกครั้ง</small></div>`);
+  $('.skill-box strong').innerHTML = `${skillIcon(c.skill)} สกิลอาชีพ`;
+  $('.skill-box p').textContent='เลือกโหมดสกิลเพื่อดู MP คูลดาวน์ และโอกาสติดสถานะก่อนเขียนคำสั่ง';
+  $('.battle-info').insertAdjacentHTML('afterbegin', '<div class="tactics-panel"><div id="enemyIntent"></div><p>'+MONSTERS[battle.level].description+'</p><div id="statusLine"></div><small>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนทุกครั้งจนตอบถูก</small></div>');
   $('.battle-controls').insertAdjacentHTML('beforeend', `<button class="btn ghost small" id="manaBtn">${skillIcon('mana')} ยามานา (${save.manaPotions})</button>`);
-  $('#manaBtn').onclick = () => usePotion('mana');
-  $('#stanceBtn').onclick = () => { if(battle.busy) return; battle.stance=!battle.stance; $('#stanceBtn').textContent=`ตั้งรับ: ${battle.stance?'เปิด':'ปิด'} · 2 MP`; persist(); };
+  $('#manaBtn').onclick=()=>usePotion('mana');
+  $('#potionBtn').innerHTML=`${skillIcon('health')} ยาฮีล (${save.potions})`;
+  $('.code-panel').insertAdjacentHTML('afterbegin','<div class="combat-commands" id="commandMenu"></div>');
+  $('.combat-badge.player').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="heroStatuses"></div>');
+  $('.combat-badge.monster').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="enemyStatuses"></div>');
+  renderCommandMenu();
   updateCombat();
   $("#code").oninput = (e) => {
     battle.code = e.target.value; /* คำตอบไม่ถูกเก็บข้ามโจทย์ */
@@ -491,46 +463,79 @@ function currentTask() {
   if (battle.phase < 3) return task;
   return {...task, prompt: `${task.prompt} แล้วเพิ่ม print("${battle.rune}") เพื่อทำลายตราผนึกใหม่`, hint: task.hint + ' และแสดงข้อความตราผนึกตามโจทย์'};
 }
-function showRules() {
-  showModal(
-    `<span class="eyebrow">HOW TO PLAY</span><h2 class="pixel-title">คู่มือนักโค้ด</h2><ol class="help-list"><li>แต่ละชั้นมี 3 โจทย์ อ่านโจทย์แล้วเขียน Python เองในช่องว่าง กดรันหรือ Ctrl+Enter</li><li>คำตอบต้องรันจริงและใช้แนวคิดที่กำหนด ผิด 2 ครั้งแรกได้ฝึกฟรี จากครั้งที่ 3 ศัตรูจะสวนทุกครั้งจนตอบถูก โดยไม่มีการจับเวลาอ่านโจทย์</li><li>ใช้ <code>attack(พลัง)</code> หรือ <code>skill("ชื่อสกิล", พลัง)</code> หนึ่งคำสั่งต่อโจทย์ พลังเป็นจำนวนเต็ม 1–3</li><li>เมื่อผ่าน โจทย์จะเปลี่ยนและช่องเขียนจะว่างทันที ศัตรูโจมตีกลับหนึ่งครั้งหลังคำตอบที่ผ่าน</li><li>HP/MP คงเหลือต่อเนื่องทุกชั้นและเมื่อรีโหลด พักแรมเสีย 30 เหรียญเพื่อฟื้น 55 HP/6 MP หรือซื้อยาจากร้านค้า ตั้งรับใช้ 2 MP ลดดาเมจที่รับ 60% แต่โจมตีเบาลง 20%</li><li>ต้องผ่านครบ 3 บทเรียนและลด HP ศัตรูให้หมด ถ้ายังไม่ตายจะมีโจทย์ต่อพร้อมตราผนึกใหม่ มอนสเตอร์ประกาศท่าถัดไปและมีสกิลเฉพาะตัว</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`,
-  );
+function renderCommandMenu() {
+  const skill=normalizeSkill(battle,save.classId),menu=$('#commandMenu');
+  const names={attack:'โจมตี',guard:'ป้องกัน',focus:'Focus',skill:'สกิล'};
+  const info={attack:'เขียน attack(พลัง) ตามโจทย์ • ถูกแล้วโจมตีและเปิดโจทย์ใหม่ แม้การโจมตีพลาด',guard:'ใช้หนึ่งเทิร์นป้องกัน ลดดาเมจสวน 60% • ไม่ใช้ MP ไม่โจมตี ไม่เลื่อนโจทย์',focus:'ใช้หนึ่งเทิร์นเพิ่ม 1 MP และเพิ่มดาเมจการโจมตีในเทิร์นถัดไป 30% • ศัตรูสวนตามปกติ',skill:`เขียน skill("${skill.id}", พลัง) ตามโจทย์ • ${skill.description}`};
+  menu.innerHTML=`<span class="eyebrow">CHOOSE YOUR ACTION</span><div class="command-row">${Object.entries(names).map(([id,name])=>`<button class="command-button ${battle.command===id?'selected':''}" data-command="${id}" aria-pressed="${battle.command===id}" ${battle.busy?'disabled':''}>${skillIcon(id==='guard'?'shield':id==='skill'?skill.icon:id)}${name}</button>`).join('')}</div>${battle.command==='skill'?`<div class="skill-palette">${SKILLS[save.classId].map(s=>`<button class="skill-choice ${skill.id===s.id?'selected':''}" data-skill="${s.id}" ${(battle.cooldowns[s.id]||0)>0||battle.mp<s.mp?'disabled':''}>${skillIcon(s.icon)}<span><b>${s.name}</b><small>${s.mp} MP · ${battle.cooldowns[s.id]?`รอ ${battle.cooldowns[s.id]} เทิร์น`:s.cd?`CD ${s.cd} เทิร์น`:'ไม่มีคูลดาวน์'}<br>${s.description}</small></span></button>`).join('')}</div>`:''}<p class="command-description">${info[battle.command]}</p><div class="command-accuracy"><span>โอกาสโจมตีโดน: ${Math.round(accuracy(save.classId,battle.heroStatuses)*100)}%</span><span>ศัตรู: ${Math.round(accuracy(save.classId,battle.enemyStatuses,true)*100)}%</span></div>`;
+  menu.querySelectorAll('[data-command]').forEach(b=>b.onclick=()=>{if(battle.busy)return;battle.command=b.dataset.command;renderCommandMenu();persist();});
+  menu.querySelectorAll('[data-skill]').forEach(b=>b.onclick=()=>{if(battle.busy)return;battle.selectedSkill=b.dataset.skill;renderCommandMenu();persist();});
+  $('#runBtn').textContent=['guard','focus'].includes(battle.command)?`ยืนยัน ${names[battle.command]} (ใช้ 1 เทิร์น)`:'▶ รันโค้ด (1 เทิร์น)';
+  const unavailable=battle.command==='skill'&&((battle.cooldowns[skill.id]||0)>0||battle.mp<skill.mp);
+  $('#runBtn').disabled=battle.busy||unavailable;
+  if(unavailable)$('#runBtn').textContent=battle.cooldowns[skill.id]?`สกิลยังรอ ${battle.cooldowns[skill.id]} เทิร์น`:'MP ไม่พอ • เลือก Focus หรือโจมตี';
+  $('.goal-text').innerHTML='<b style="color:var(--gold)">ภารกิจ:</b> '+esc(currentTask().prompt)+(battle.command==='skill'?'<small class="skill-task-note">ใช้ skill() ที่เลือกแทน attack() ได้ โดยใช้พลังตามโจทย์ • โอกาสติดสถานะคิดเมื่อโจมตีโดน</small>':'');
+  $('.action-hint').innerHTML=battle.command==='skill'?`คำสั่งที่เลือก: <code>skill("${skill.id}", พลัง)</code><br>${skill.mp} MP • ${skill.cd?`คูลดาวน์ ${skill.cd} เทิร์น`:'ไม่มีคูลดาวน์'}`:battle.command==='attack'?'เขียน <code>attack(พลัง)</code> ตามโจทย์ • ต้องผ่าน 3 บทเรียนและลด HP ศัตรูจนหมด':info[battle.command];
 }
-async function usePotion(type = 'health') {
-  if (typeof type !== 'string') type = 'health';
-  const mana = type === 'mana', inventory = mana ? 'manaPotions' : 'potions';
-  if (!battle || battle.busy || battle.finished || save[inventory] < 1) return;
-  if (mana ? battle.mp === battle.maxMp : battle.hp === battle.maxHp) {
-    toast("พลังเต็มอยู่แล้ว");
-    return;
+function renderStatusBadges() {
+  for(const [id,statuses] of [['heroStatuses',battle.heroStatuses],['enemyStatuses',battle.enemyStatuses]]) {
+    const element=$('#'+id);if(!element)continue;
+    const extra=id==='enemyStatuses'&&battle.enemyGuard?'<span class="status-token" title="เกราะลดดาเมจโจมตีครั้งถัดไป 45%" tabindex="0">'+skillIcon('shield')+'<b>1 ครั้ง</b></span>':'';
+    element.innerHTML=Object.entries(statuses).map(([key,s])=>{
+      const meta=STATUS[key];if(!meta)return '';
+      const duration=key==='focused'?'เทิร์นถัดไป':key==='guard'?'สวน 1 ครั้ง':s.turns+' เทิร์น';
+      return `<span class="status-token" title="${meta.name}: ${meta.text}${s.power?' ('+s.power+' HP)':''} • เหลือ ${duration}" tabindex="0">${skillIcon(meta.icon)}<span class="status-name">${meta.name}</span><b>${duration}</b></span>`;
+    }).join('')+extra;
+    if(!element.innerHTML)element.innerHTML='<span class="status-empty">ไม่มีสถานะผิดปกติ</span>';
   }
-  battle.busy = true;
-  save[inventory]--;
-  persist();
+}
+function heroStartTurn() {
+  for(const hit of tickDots(battle.heroStatuses)) {
+    battle.hp=Math.max(0,battle.hp-hit.damage);floatDamage(hit.damage,'hero');log(`${STATUS[hit.id].name}: เสีย ${hit.damage} HP`);
+  }
+  updateCombat();
+  if(battle.hp<=0){battle.busy=false;defeat();return false;}
+  return true;
+}
+function checkBattleEnd() {
+  if(battle.hp<=0){battle.busy=false;defeat();return true;}
+  if(battle.enemyHp<=0&&battle.phase>=2){battle.finished=true;battle.busy=false;victory();return true;}
+  return false;
+}
+async function executeUtilityTurn() {
+  battle.busy=true;$('#runBtn').disabled=true;renderCommandMenu();
   await frameBattle();
-  let gain = mana ? Math.min(6, battle.maxMp-battle.mp) : Math.min(45,battle.maxHp-battle.hp);
-  playSfx("potion");
-  spawnBattleFx("heal", "hero");
-  await wait(520);
-  if(mana) battle.mp+=gain; else battle.hp+=gain;
-  log(`ใช้ยา ฟื้น ${gain} ${mana?'MP':'HP'}`);
-  updateCombat();
-  await enemyTurn();
-  if (battle.hp <= 0) {
-    battle.finished = true;
-    battle.busy = false;
-    updateCombat();
-    defeat();
-    return;
-  }
-  battle.turn++;
-  battle.busy = false;
-  updateCombat();
-  $("#potionBtn").textContent = `🧪 ใช้ยา (${save.potions})`;
-  $("#potionBtn").disabled = save.potions < 1;
-  $('#manaBtn').innerHTML = `${skillIcon('mana')} ยามานา (${save.manaPotions})`;
-  persist();
-  toast("ฟื้น HP แล้ว ศัตรูโจมตีกลับหนึ่งครั้ง");
+  if(!heroStartTurn())return;
+  const command=battle.command;
+  consumeFocus(battle.heroStatuses,command);
+  expireActionStatuses(battle.heroStatuses);
+  if(command==='guard') {addStatus(battle.heroStatuses,'guard',1);announceCombat('ยกการ์ด • ป้องกัน 60%');log('ป้องกันหนึ่งเทิร์น ไม่ใช้มานา');spawnBattleFx('shield','hero');}
+  else {battle.mp=Math.min(battle.maxMp,battle.mp+1);addStatus(battle.heroStatuses,'focused',1);announceCombat('Focus • +1 MP / โจมตีเทิร์นถัดไป +30%');log('Focus ฟื้นสูงสุด 1 MP และสะสมสมาธิ (ไม่ทบซ้อน)');spawnBattleFx('heal','hero');}
+  advanceCooldowns(battle);updateCombat();await wait(500);await enemyTurn();
+  if(checkBattleEnd())return;
+  battle.turn++;battle.busy=false;renderBattle(false);persist();
+  $('#console').textContent=command==='guard'?'ป้องกันแล้ว เลือกคำสั่งสำหรับเทิร์นถัดไป':'Focus แล้ว • +1 MP ไม่เกินค่าสูงสุด และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30%';
+}
+function showRules() {
+  showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูกและโกเลมไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่จับเวลาอ่านโจทย์ ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องผ่าน 3 บทเรียนและลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
+}
+async function usePotion(type='health') {
+  if(typeof type!=='string')type='health';
+  const mana=type==='mana',inventory=mana?'manaPotions':'potions';
+  if(!battle||battle.busy||battle.finished||save[inventory]<1)return;
+  if(mana?battle.mp===battle.maxMp:battle.hp===battle.maxHp)return toast('พลังเต็มอยู่แล้ว');
+  battle.busy=true;$('#runBtn').disabled=true;renderCommandMenu();
+  await frameBattle();if(!heroStartTurn())return;
+  save[inventory]--;
+  consumeFocus(battle.heroStatuses,'item');
+  const gain=mana?Math.min(POTION_MP,battle.maxMp-battle.mp):Math.min(POTION_HP,battle.maxHp-battle.hp);
+  if(mana)battle.mp+=gain;else battle.hp+=gain;
+  expireActionStatuses(battle.heroStatuses);advanceCooldowns(battle);
+  playSfx('potion');spawnBattleFx('heal','hero');log(`ดื่มยา: ฟื้น ${gain} ${mana?'MP':'HP'} • ใช้หนึ่งเทิร์น`);
+  updateCombat();await wait(450);await enemyTurn();
+  if(checkBattleEnd())return;
+  battle.turn++;battle.busy=false;renderBattle(false);persist();
+  $('#console').textContent=`ใช้ยาแล้ว ฟื้น ${gain} ${mana?'MP':'HP'} ศัตรูสวนกลับหนึ่งครั้ง`;
 }
 function log(message) {
   battle.logs.push(message);
@@ -565,7 +570,8 @@ function updateCombat() {
   $("#battleLog").scrollTop = $("#battleLog").scrollHeight;
   const intent = enemyIntent(battle.level, battle.turn);
   if($('#enemyIntent')) $('#enemyIntent').innerHTML = `${skillIcon(intent.icon)} <strong>ท่าถัดไป: ${intent.name}</strong><span>ดาเมจพื้นฐาน ${intent.damage}</span>`;
-  if($('#statusLine')) $('#statusLine').textContent = `แรงกดดัน ${battle.pressure||0}/3 · ${battle.poison ? 'พิษ '+battle.poison+' ครั้ง · ' : ''}${battle.web ? 'ติดใย · ' : ''}${battle.enemyGuard ? 'ศัตรูมีเกราะ · ' : ''}${battle.guard ? 'กำลังตั้งรับ' : ''}`;
+  if($('#statusLine')) $('#statusLine').textContent=`แรงกดดัน ${battle.pressure||0}/3 • โทสะศัตรู +${Math.min(8,Math.floor((battle.turn-1)/4)*2)} • ชี้ไอคอนเพื่อดูสถานะและเวลา`;
+  renderStatusBadges();
 }
 const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -600,6 +606,7 @@ function spawnBattleFx(kind, target = "enemy") {
 
 async function animateHeroAction(action, impact) {
   const heroClass = save.classId;
+  const skill=skillFor(heroClass,battle.selectedSkill);
   if (action.name === "attack") {
     announceCombat("⚔ โจมตี!");
     playSfx("attack");
@@ -608,12 +615,13 @@ async function animateHeroAction(action, impact) {
     });
     return;
   }
-  announceCombat(`✦ ${CLASSES[heroClass].skillName}!`);
-  await playCutscene(heroClass);
+  announceCombat(`✦ ${skill.name}!`);
+  await playCutscene(heroClass,skill);
   playSfx("skill");
   spawnBattleFx(`cast-${heroClass}`, "hero");
-  await playCombatMotion('hero', CLASSES[heroClass].skill, () => {
-    spawnBattleFx(heroClass==='wizard'?'inferno':heroClass==='knight'?'aegis':'crosscut','enemy'); impact();
+  await playCombatMotion('hero', skill.id, () => {
+    const effects={fireball:'inferno',frost_lance:'frost',double_strike:'crosscut',smoke_blade:'curse',shield_bash:'aegis',iron_oath:'shield'};
+    spawnBattleFx(effects[skill.id],'enemy'); impact();
   });
 }
 
@@ -649,57 +657,66 @@ function damageEnemy(amount, label) {
 function floatDamage(amount,target) {
   const number=document.createElement('span');
   number.className='damage-float '+target;
-  number.textContent='−'+amount;
+  number.textContent=typeof amount==='number'?'−'+amount:amount;
+  if(typeof amount!=='number')number.classList.add('miss-float');
   $('#scene')?.append(number);
   setTimeout(()=>number.remove(),1200);
 }
 async function applyAction(a) {
-  const c = CLASSES[save.classId];
-  const amount = attackDamage(save.classId,battle.level,save.attackBonus,a.power,a.name==='skill',battle.web>0,battle.stance);
-  if(battle.stance) {battle.mp-=2;battle.guard=true;}
-  battle.web = 0;
-  await animateHeroAction(a, () => {
-    if (a.name === "attack") damageEnemy(amount, "โจมตี");
+  const skill=skillFor(save.classId,battle.selectedSkill),isSkill=a.name==='skill';
+  const focused=consumeFocus(battle.heroStatuses,a.name);
+  const base=attackDamage(save.classId,battle.level,save.attackBonus,a.power,false)+(isSkill?skill.bonus:0);
+  const amount=heroDamage(base,battle.heroStatuses,focused);
+  const hit=chance(battle,accuracy(save.classId,battle.heroStatuses));
+  if(isSkill) {battle.mp-=skill.mp;battle.cooldowns[skill.id]=skill.cd;}
+  await animateHeroAction(a,()=>{
+    if(!hit) {log('โค้ดถูกต้อง แต่การโจมตีพลาด!');floatDamage('MISS','enemy');}
     else {
-      battle.mp -= c.skill === "fireball" ? 6 : 5;
-      if (c.skill === "double_strike") damageEnemy(amount, "ฟันสองจังหวะ");
-      if (c.skill === "shield_bash") {
-        damageEnemy(amount, "กระแทกโล่");
-        battle.guard = true;
-        log("ยกโล่ป้องกันการโจมตีถัดไป");
+      damageEnemy(amount,isSkill?skill.name:'โจมตี');
+      if(isSkill&&skill.status) {
+        const applied=attemptStatus(battle,battle.enemyStatuses,skill.status,skill.turns,skill.power||0,statusChance(skill,battle.level));
+        log(applied?`ศัตรูติด ${STATUS[skill.status].name} ${skill.turns} เทิร์น`:`ไม่ติด ${STATUS[skill.status].name} (โอกาส ${Math.round(statusChance(skill,battle.level)*100)}%)`);
       }
-      if (c.skill === "fireball") damageEnemy(amount, "ลูกไฟเวท");
     }
+    expireActionStatuses(battle.heroStatuses);
+    if(isSkill&&skill.guard)addStatus(battle.heroStatuses,'guard',1);
+    if(isSkill&&skill.fortify)addStatus(battle.heroStatuses,'fortified',2);
     updateCombat();
   });
-  battle.stance=false;
+  advanceCooldowns(battle,isSkill?skill.id:null);
+  battle.lastHit=hit;
 }
 async function enemyTurn() {
-  if (battle.poison > 0) {
-    const poison = battle.poisonDamage || 4;
-    battle.hp = Math.max(0, battle.hp - poison);
-    battle.poison--;
-    log(`พิษสร้างความเสียหาย ${poison} HP`);
-    updateCombat();
-    if (battle.hp === 0) {persist();return;}
+  for(const hit of tickDots(battle.enemyStatuses)) {
+    battle.enemyHp=Math.max(battle.phase<2?1:0,battle.enemyHp-hit.damage);
+    floatDamage(hit.damage,'enemy');log(`${STATUS[hit.id].name} ทำให้ศัตรูเสีย ${hit.damage} HP`);
   }
-  const move = enemyIntent(battle.level,battle.turn);
-  const amount = incomingDamage(move.damage,save.classId,battle.guard);
-  battle.guard=false;
-  await animateEnemyAction(move, () => {
-    battle.hp = Math.max(0,battle.hp-amount);
-    floatDamage(amount,'hero');
-    if(move.poison) {battle.poison=2; battle.poisonDamage=move.poison;}
-    if(move.web) battle.web=1;
-    if(move.shield) battle.enemyGuard=true;
-    if(move.drain) battle.mp=Math.max(0,battle.mp-move.drain);
-    if(move.heal) battle.enemyHp=Math.min(battle.maxEnemyHp,battle.enemyHp+move.heal);
-    log(`${LEVELS[battle.level].enemy}: ${move.name} • คุณเสีย ${amount} HP${move.drain?' และ '+move.drain+' MP':''}`);
-    flash(".fighter.hero");
-    playSfx("hurt");
+  updateCombat();if(battle.enemyHp<=0)return;
+  const move=enemyIntent(battle.level,battle.turn);
+  const rage=Math.min(8,Math.floor((battle.turn-1)/4)*2);
+  const amount=enemyDamage(move.damage+rage,battle.heroStatuses,battle.enemyStatuses,save.classId==='knight');
+  const hit=chance(battle,accuracy(save.classId,battle.enemyStatuses,true));
+  await animateEnemyAction(move,()=>{
+    if(!hit) {log(`${LEVELS[battle.level].enemy} ใช้ ${move.name} พลาด!`);floatDamage('MISS','hero');}
+    else {
+      battle.hp=Math.max(0,battle.hp-amount);floatDamage(amount,'hero');
+      log(`${LEVELS[battle.level].enemy}: ${move.name} • เสีย ${amount} HP${rage?' (โทสะ +'+rage+')':''}`);
+      if(move.poison) {
+        const probability=battle.level===0?.6:battle.level===2?.7:.55;
+        const applied=attemptStatus(battle,battle.heroStatuses,'poison',2,move.poison,probability);
+        log(applied?`ติดพิษ ${move.poison} HP นาน 2 เทิร์น`:`ต้านพิษได้ (โอกาสติด ${Math.round(probability*100)}%)`);
+      }
+      if(move.web) {if(attemptStatus(battle,battle.heroStatuses,'web',2,0,.75))log('ติดใย 2 เทิร์น');if(attemptStatus(battle,battle.heroStatuses,'blind',2,0,.5))log('ใยบังตา ความแม่นยำลด 2 เทิร์น');}
+      if(move.drain)battle.mp=Math.max(0,battle.mp-move.drain);
+      flash('.fighter.hero');playSfx('hurt');
+    }
+    // A shield is defensive; lifesteal requires a successful hit.
+    if(move.shield)battle.enemyGuard=true;
+    if(move.heal&&hit)battle.enemyHp=Math.min(battle.maxEnemyHp,battle.enemyHp+move.heal);
+    delete battle.heroStatuses.guard;
+    expireActionStatuses(battle.enemyStatuses);
     updateCombat();
   });
-  persist();
 }
 async function frameBattle() {
   $("#code")?.blur();
@@ -708,6 +725,8 @@ async function frameBattle() {
 }
 async function executeTurn() {
   if (!battle || battle.busy || battle.finished) return;
+  ensureTactics(battle);
+  if(['guard','focus'].includes(battle.command))return executeUtilityTurn();
   const current = battle,
     code = $("#code").value.trim(),
     btn = $("#runBtn"),
@@ -729,7 +748,7 @@ async function executeTurn() {
     result = await runPython(
       code,
       battle.level * 3 + battle.phase % 3 + 1,
-      CLASSES[save.classId].skill,
+      normalizeSkill(battle,save.classId).id,
     );
   } catch (error) {
     result = { ok: false, error: error.message, technical: true };
@@ -748,11 +767,14 @@ async function executeTurn() {
     if(battle.pressure>=3) {
       battle.busy=true; btn.disabled=true;
       await frameBattle();
+      if(!heroStartTurn())return;
+      consumeFocus(battle.heroStatuses,'error');
+      expireActionStatuses(battle.heroStatuses);
       announceCombat('ผิดซ้ำ • ศัตรูฉวยโอกาส!');
       await enemyTurn();
       battle.turn++;
       battle.busy=false;
-      if(battle.hp<=0) {battle.finished=true; persist(); defeat();return;}
+      if(checkBattleEnd())return;
       renderBattle(false);
       $('#console').classList.add('error'); $('#console').textContent='✖ '+result.error+' • แรงกดดันเต็มแล้ว ทุกคำตอบผิดศัตรูจะสวนกลับ ใช้คำใบ้ช่วยได้';
       $('.code-panel').scrollIntoView({behavior:'smooth',block:'start'});
@@ -760,16 +782,20 @@ async function executeTurn() {
     updateCombat(); persist();
     return;
   }
-  const action = result.actions[0],
-    c = CLASSES[save.classId],
-    cost = c.skill === "fireball" ? 6 : 5;
-  const requiredMp = (action.name==='skill'?cost:0)+(battle.stance?2:0);
+  const action=result.actions[0],skill=normalizeSkill(battle,save.classId);
+  if((battle.command==='skill')!==(action.name==='skill')) {
+    battle.busy=false;btn.disabled=false;renderCommandMenu();out.classList.add('error');out.textContent='เลือกโหมดให้ตรงกับโค้ด: โจมตีใช้ attack() และสกิลใช้ skill()';return;
+  }
+  if(action.name==='skill' && battle.cooldowns[skill.id]>0) {
+    battle.busy=false;btn.disabled=false;renderCommandMenu();out.classList.add('error');out.textContent=`${skill.name} ต้องรออีก ${battle.cooldowns[skill.id]} เทิร์น เลือกโจมตี ป้องกัน หรือ Focus ระหว่างรอ`;return;
+  }
+  const requiredMp=action.name==='skill'?skill.mp:0;
   if (battle.mp < requiredMp) {
     battle.busy = false;
     btn.disabled = false;
     btn.textContent = "▶ รันโค้ด (1 เทิร์น)";
     out.classList.add("error");
-    out.textContent = `MP เหลือ ${battle.mp} แต่คำสั่งนี้ใช้ ${requiredMp} MP ปิดตั้งรับ ใช้ attack() หรือดื่มยามานา`;
+    out.textContent = `MP เหลือ ${battle.mp} แต่ต้องใช้ ${requiredMp} MP เลือก Focus ฟื้น 1 MP หรือเปลี่ยนเป็นโจมตีปกติ`;
     return;
   }
   btn.textContent =
@@ -790,6 +816,7 @@ async function executeTurn() {
     if (stable >= 3 && performance.now() - scrollStarted > 350) break;
   }
   if (screen !== "battle" || battle !== current) return;
+  if(!heroStartTurn())return;
   announceCombat("คำตอบถูกต้อง • เตรียมโจมตี!");
   await wait(400);
   await applyAction(action);
@@ -812,12 +839,7 @@ async function executeTurn() {
   await enemyTurn();
   updateCombat();
   await wait(850);
-  if (battle.hp <= 0) {
-    battle.finished = true;
-    battle.busy = false;
-    defeat();
-    return;
-  }
+  if(checkBattleEnd())return;
   battle.phase++;
   if(battle.phase>=3) battle.rune='ตรา:'+Math.floor(1000+Math.random()*9000);
   battle.turn++;
@@ -826,7 +848,7 @@ async function executeTurn() {
   renderBattle(false);
   persist();
   $("#console").textContent =
-    `✓ ผ่านแล้ว: ${TAKEAWAYS[battle.level][(battle.phase - 1)%3]}\n${battle.phase>=3?'ศัตรูยังไม่ตาย ทำโจทย์ต่อพร้อมแสดงตราผนึกใหม่':'เขียนคำตอบใหม่สำหรับโจทย์ '+(battle.phase + 1)}`;
+    `${battle.lastHit===false?'✓ โค้ดถูกต้อง แต่โจมตีพลาด •':'✓ ผ่านแล้ว:'} ${TAKEAWAYS[battle.level][(battle.phase - 1)%3]}\n${battle.phase>=3?'ศัตรูยังไม่ตาย ทำโจทย์ต่อพร้อมแสดงตราผนึกใหม่':'เขียนคำตอบใหม่สำหรับโจทย์ '+(battle.phase + 1)}`;
   $(".code-panel").scrollIntoView({ behavior: "smooth", block: "start" });
   $("#code").focus({ preventScroll: true });
 }
@@ -882,7 +904,9 @@ function defeat() {
 }
 $("#homeBtn").onclick = () => {
   if (screen === "battle" && battle?.busy) return toast("รอจบเทิร์นนี้ก่อนครับ");
-  save.classId ? renderMap() : renderIntro();
+  if(screen==='battle'&&battle)persist();
+  if(save.classId)selected=save.classId;
+  renderIntro();
 };
 $("#soundBtn").onclick = async () => {
   muted = !muted;
@@ -901,5 +925,5 @@ $("#soundBtn").onclick = async () => {
 };
 if (save.classId) {
   selected = save.classId;
-  renderMap();
+  renderIntro();
 } else renderIntro();

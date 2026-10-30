@@ -1,11 +1,11 @@
 // Pure combat rules shared by the game and balance checks.
 export const MONSTERS = [
-  { hp: 62, atk: 12, skill: 'กัดแพร่เชื้อ', icon: 'poison', description: 'เทิร์นคู่: กัดแรงขึ้นและติดพิษ 4 HP สองครั้ง' },
-  { hp: 90, atk: 15, skill: 'โล่กระดูก / ดาบสะบั้น', icon: 'shield', description: 'เทิร์นคู่วางโล่ลดดาเมจครั้งถัดไป 45% ก่อนฟันหนักในเทิร์นถัดมา' },
-  { hp: 120, atk: 16, skill: 'ใยพิษพันธนาการ', icon: 'web', description: 'เทิร์นคู่: ลดพลังโจมตีถัดไป 25% พร้อมพิษ 3 HP สองครั้ง' },
-  { hp: 154, atk: 18, skill: 'ดูดมานาและวิญญาณ', icon: 'curse', description: 'เทิร์นคู่: ดูด 3 MP และฟื้นเลือดตัวเอง 10 HP' },
-  { hp: 190, atk: 21, skill: 'สะสมพลัง / แผ่นดินแยก', icon: 'stone', description: 'เทิร์นคี่ตั้งเกราะ เทิร์นคู่ทุบหนัก +12 ดาเมจ' },
-  { hp: 235, atk: 24, skill: 'คำสาปมรณะ', icon: 'curse', description: 'สลับดูด 2 MP กับคำสาป +10 ดาเมจและพิษ 5 HP สองครั้ง' },
+  { hp: 62, atk: 14, skill: 'กัดแพร่เชื้อ', icon: 'poison', description: 'เทิร์นคู่กัดแรงขึ้น • ถ้าโดน มีโอกาสติดพิษ 60% (4 HP / 2 เทิร์น)' },
+  { hp: 90, atk: 17, skill: 'โล่กระดูก / ดาบสะบั้น', icon: 'shield', description: 'เทิร์นคู่ตั้งเกราะลดดาเมจครั้งถัดไป 45% ก่อนฟันหนัก • ไม่ติดเลือดไหล' },
+  { hp: 120, atk: 18, skill: 'ใยพิษพันธนาการ', icon: 'web', description: 'เทิร์นคู่: พิษ 70% / ใยลดดาเมจ 75% / ตาพร่า 50% นาน 2 เทิร์น' },
+  { hp: 154, atk: 20, skill: 'ดูดมานาและวิญญาณ', icon: 'curse', description: 'เทิร์นคู่: ถ้าโจมตีโดน ดูด 3 MP และฟื้นเลือดตนเอง 10 HP' },
+  { hp: 190, atk: 23, skill: 'สะสมพลัง / แผ่นดินแยก', icon: 'stone', description: 'เทิร์นคี่ตั้งเกราะ เทิร์นคู่ทุบหนัก +12 • ไม่เลือดไหล และติดไฟยากขึ้น' },
+  { hp: 235, atk: 26, skill: 'คำสาปมรณะ', icon: 'curse', description: 'สลับดูด 2 MP กับคำสาป +10 ดาเมจ • ถ้าโดน โอกาสติดพิษ 55% นาน 2 เทิร์น' },
 ];
 export function enemyIntent(level, turn) {
   const m = MONSTERS[level], even = turn % 2 === 0;
