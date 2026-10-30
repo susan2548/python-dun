@@ -25,6 +25,10 @@ export const STATUS = {
   focused:{name:'สมาธิ',icon:'focus',text:'โจมตีในเทิร์นถัดไปแรงขึ้น 30% หมดเมื่อใช้เทิร์น แม้พลาดหรือเลือกป้องกัน/ยา'},
 };
 export const POTION_HP=20, POTION_MP=3;
+// UI names and executable aliases share one registry. English saves remain valid.
+export function skillAliasMap() {
+  return Object.fromEntries(Object.values(SKILLS).flat().flatMap(s=>[[s.id,s.id],[s.name,s.id]]));
+}
 export function ensureTactics(b) {
   b.heroStatuses ??= {}; b.enemyStatuses ??= {}; b.cooldowns ??= {};
   b.command ??= 'attack'; b.selectedSkill ??= null;

@@ -1,100 +1,71 @@
-// Raster animation rig: a fixed ground anchor, breathing torso, delayed head
-// and cloth follow-through. Frames are cached; pixel edges never rotate/blur.
-const cache = new Map();
-const images = new Map();
-const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-
-function load(src) {
-  if (!images.has(src)) images.set(src, new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = src;
+// Authored pose atlases + planted-foot breathing. World movement is owned by
+// combat-cinema; this renderer never changes game state or combat timing.
+const images=new Map();
+const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const heroes=['adventurer','knight','wizard'];
+const monsters=['zombie','skeleton','spider','wraith','golem','necromancer'];
+function load(src){
+  if(!images.has(src))images.set(src,new Promise((resolve,reject)=>{
+    const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=src;
   }));
   return images.get(src);
 }
-
-async function framesFor(kind, index, motion = 'idle') {
-  const key = `${kind}-${index}-${motion}`;
-  if (cache.has(key)) {
-    const frames=cache.get(key); cache.delete(key); cache.set(key,frames); return frames;
-  }
-  const promise = (async () => {
-    const hero = kind === 'hero';
-    const image = await load(`./assets/${hero ? 'heroes' : 'monsters'}.png`);
-    const w = 192, h = hero ? 256 : 192;
-    const source = document.createElement('canvas');
-    source.width = w; source.height = h;
-    const ctx = source.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    const sw = image.width / 3, sh = image.height / (hero ? 1 : 2);
-    ctx.drawImage(image, index % 3 * sw, Math.floor(index / 3) * sh, sw, sh, 0, 0, w, h);
-    return Array.from({length: 24}, (_, frame) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const paint = canvas.getContext('2d');
-      paint.imageSmoothingEnabled = false;
-      const phase = frame / 24 * Math.PI * 2;
-      const ghost = !hero && index === 3;
-      const breath = (1 - Math.cos(phase)) / 2;
-      const progress = frame/23;
-      const strike = motion==='attack' ? (progress<.25?-Math.sin(progress/.25*Math.PI)*2:Math.sin(Math.min(1,(progress-.25)/.75)*Math.PI)*7) : 0;
-      const casting = motion==='cast'?Math.sin(progress*Math.PI)*3:0;
-      // Heavy armour barely breathes; soft robes and undead have more motion.
-      const strength = hero ? [1.8, 1.1, 1.6][index] : [2.1, 1.2, 1.7, 2.5, 0.9, 1.5][index];
-      for (let y = 0; y < h; y++) {
-        const t = y / h;
-        // Keep the bottom 18% exactly planted; no whole-image bobbing.
-        const upper = Math.max(0, Math.min(1, (0.82 - t) / 0.46));
-        const dy = Math.round(-(motion==='idle'?breath*strength:casting)*upper + (ghost && motion==='idle' ? Math.sin(phase) * 2 : 0));
-        const cloth = t > 0.35 && t < 0.82 ? Math.sin((t - 0.35) / 0.47 * Math.PI) : 0;
-        const drift = Math.round(strike*upper*(hero?1:-1) + (motion==='idle' ? Math.sin(phase - t*3)*cloth*(ghost?2:hero&&index===1?.5:1.5) : 0));
-        // Overlapping scanlines fill the tiny gaps caused by the breathing pose.
-        paint.drawImage(source, 0, y, w, 1, drift, y + dy, w, 2);
-      }
-      return canvas;
-    });
-  })();
-  cache.set(key, promise);
-  // Keep only the two on-screen actors' three motion sets on small devices.
-  while(cache.size>6) cache.delete(cache.keys().next().value);
-  return promise;
+function poseFor(motion,phase){
+  if(motion==='technique')return phase<.32?4:phase<.76?5:4;
+  if(motion==='drink')return phase<.3?6:phase<.78?7:6;
+  if(motion==='cast')return phase<.42?4:phase<.84?5:4;
+  if(motion==='attack')return phase<.32?2:phase<.68?3:2;
+  return 0;
 }
-
-export async function mountSpriteMotion(heroIndex, monsterIndex) {
-  const fighters = [...document.querySelectorAll('.fighter')];
-  await Promise.all(fighters.map(async (fighter, i) => {
-    const hero = fighter.classList.contains('hero');
-    try {
-      const frames = await framesFor(hero ? 'hero' : 'enemy', hero ? heroIndex : monsterIndex);
-      const actionFrames = await framesFor(hero?'hero':'enemy',hero?heroIndex:monsterIndex,'attack');
-      const castFrames = await framesFor(hero?'hero':'enemy',hero?heroIndex:monsterIndex,'cast');
-      if (!fighter.isConnected) return;
-      const canvas = document.createElement('canvas');
-      canvas.width = frames[0].width; canvas.height = frames[0].height;
-      canvas.className = 'sprite-raster';
-      canvas.setAttribute('aria-hidden', 'true');
-      fighter.append(canvas);
-      fighter.classList.add('raster-ready');
-      fighter.dataset.kind = hero ? ['adventurer','knight','wizard'][heroIndex] : ['zombie','skeleton','spider','wraith','golem','necromancer'][monsterIndex];
-      const ctx = canvas.getContext('2d');
-      const started = performance.now();
-      const period = hero ? [2400, 3000, 2800][heroIndex] : [2600, 3100, 1800, 3200, 3800, 2900][monsterIndex];
-      let lastFrame = -1;
-      const draw = (now) => {
-        if (!canvas.isConnected) return;
+export async function mountSpriteMotion(heroIndex,monsterIndex){
+  await Promise.all([...document.querySelectorAll('.fighter')].map(async(fighter,index)=>{
+    const hero=fighter.classList.contains('hero');
+    const kind=hero?heroes[heroIndex]:monsters[monsterIndex];
+    try{
+      let image,atlas=true;
+      try{image=await load(`./assets/poses/${kind}.png`);}catch{atlas=false;image=await load(`./assets/${hero?'heroes':'monsters'}.png`);}
+      if(!fighter.isConnected)return;
+      const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;canvas.className='sprite-raster';canvas.setAttribute('aria-hidden','true');
+      fighter.append(canvas);fighter.classList.add('raster-ready');if(atlas)fighter.classList.add('pose-atlas');fighter.dataset.kind=kind;
+      const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+      const source=document.createElement('canvas');source.width=256;source.height=256;const paint=source.getContext('2d');paint.imageSmoothingEnabled=false;
+      const started=performance.now();const period=hero?[2600,3300,3000][heroIndex]:[3000,3500,2100,3800,4200,3600][monsterIndex];
+      let last='';
+      function draw(now){
+        if(!canvas.isConnected)return;
         const motion=fighter.dataset.motion||'idle';
-        const elapsed = Math.max(0,now-started+i*650);
-        const frame = reducedMotion.matches ? 0 : motion!=='idle' ? Math.max(0,Math.min(23,Number(fighter.dataset.pose)||0)) : Math.floor((elapsed % period) / period * frames.length);
-        const key=motion+frame;
-        if (key !== lastFrame) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage((motion==='attack'?actionFrames:motion==='cast'?castFrames:frames)[frame], 0, 0);
-          lastFrame = key;
+        const phase=Math.max(0,Math.min(1,Number(fighter.dataset.progress)||0));
+        const time=Math.max(0,now-started+index*730),cycle=(time%period)/period;
+        const idle=motion==='idle';
+        const slot=reduced.matches||idle?0:poseFor(motion,phase);
+        const ease=t=>t*t*(3-2*t);
+        const blend=reduced.matches||!idle?0:cycle<.20?0:cycle<.35?ease((cycle-.20)/.15):cycle<.65?1:cycle<.80?1-ease((cycle-.65)/.15):0;
+        const breath=reduced.matches?0:idle?Math.round((1-Math.cos(cycle*Math.PI*2))*(kind==='golem'?.45:.8)):0;
+        const ghost=kind==='wraith';const hover=ghost&&!reduced.matches?Math.round(Math.sin(time/700)*3):0;
+        const key=`${slot}-${Math.round(blend*10)}-${breath}-${hover}-${motion}`;
+        if(key!==last){
+          paint.clearRect(0,0,256,256);
+          if(atlas){
+            const cols=hero?4:3;
+            paint.globalAlpha=1-blend;paint.drawImage(image,slot%cols*256,Math.floor(slot/cols)*256,256,256,0,0,256,256);
+            if(blend){paint.globalCompositeOperation='lighter';paint.globalAlpha=blend;paint.drawImage(image,256,0,256,256,0,0,256,256);paint.globalCompositeOperation='source-over';}
+            paint.globalAlpha=1;
+            if(motion==='drink'&&fighter.dataset.potion==='mana'){
+              const pixels=paint.getImageData(0,0,256,256),d=pixels.data;
+              for(let j=0;j<d.length;j+=4)if(d[j]>145&&d[j+1]<105&&d[j+2]<95){const red=d[j];d[j]=45;d[j+1]=Math.min(210,d[j+1]+80);d[j+2]=red;}
+              paint.putImageData(pixels,0,0);
+            }
+          }
+          else {const idx=hero?heroIndex:monsterIndex,sw=image.width/3,sh=image.height/(hero?1:2);paint.drawImage(image,idx%3*sw,Math.floor(idx/3)*sh,sw,sh,24,16,208,234);}
+          ctx.clearRect(0,0,256,256);
+          // Expand only the ribcage; soles and floor anchor remain stationary.
+          ctx.drawImage(source,0,0,256,201,0,-breath+hover,256,201+breath);
+          ctx.drawImage(source,0,201,256,55,0,201+hover,256,55);
+          fighter.dataset.frame=String(slot);last=key;
         }
         requestAnimationFrame(draw);
-      };
+      }
       requestAnimationFrame(draw);
-    } catch (error) { console.warn('Sprite animation fallback', error); }
+    }catch(error){console.warn('Sprite animation fallback',error);}
   }));
 }

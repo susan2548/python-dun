@@ -1,0 +1,23 @@
+:root{--editor-bg:#102d33;--editor-border:#395b60;--editor-ink:#e4f5e2;--editor-comment:#91aaa2;--editor-string:#f2ac90;--editor-number:#c7a5f5;--editor-keyword:#f4ce85;--editor-builtin:#91e0db;--editor-active:#f6c8760b}
+:root{--scroll-thumb:#668d86;--scroll-track:#10282e;--scroll-hover:#9be8c2;--scroll-active:#f6c876}
+*{scrollbar-color:var(--scroll-thumb) var(--scroll-track);scrollbar-width:auto}
+::-webkit-scrollbar{width:12px;height:12px}::-webkit-scrollbar-track{background:var(--scroll-track)}::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border:3px solid var(--scroll-track);border-radius:6px}::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}::-webkit-scrollbar-thumb:active{background:var(--scroll-active)}
+.editor-top{background:var(--editor-bg);border-color:var(--editor-border);font:12px Consolas,monospace;padding:13px 16px;min-height:46px}
+.editor-top span:first-child:before{content:'●';color:var(--mint);margin-right:9px}
+.python-editor{display:flex;position:relative;background:var(--editor-bg);border:2px solid var(--editor-border);border-top:1px solid var(--editor-border);overflow:hidden;isolation:isolate}
+.editor-gutter{width:48px;flex:none;overflow:hidden;padding:14px 9px 14px 0;text-align:right;color:#77999d;border-right:1px solid var(--editor-border);font:15px/28px Consolas,monospace;user-select:none}
+.editor-gutter span{display:block;height:28px}.editor-gutter .current-line{color:var(--gold)}
+.editor-writing{position:relative;flex:1;min-width:0;overflow:hidden}
+.editor-writing .code-editor,.editor-paint{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;padding:14px 20px;white-space:pre;overflow:auto;tab-size:4;font:16px/28px Consolas,'Chakra Petch',monospace;letter-spacing:0;font-variant-ligatures:none;text-align:left}
+.editor-paint{color:var(--editor-ink);pointer-events:none;z-index:1;scrollbar-width:none}.editor-paint::-webkit-scrollbar{display:none}
+.editor-writing .code-editor{z-index:2;background:transparent;color:transparent;caret-color:#fff6d1;resize:none;min-height:0;-webkit-text-fill-color:transparent;outline-offset:-3px}
+.editor-writing .code-editor::placeholder{color:#8badad;-webkit-text-fill-color:#8badad;font-size:14px}
+.editor-writing .code-editor::selection{background:#65a7a655;color:transparent}
+.editor-active-line{position:absolute;left:0;right:0;height:28px;background:var(--editor-active);border-left:3px solid var(--gold);pointer-events:none;z-index:0}
+.syntax-comment{color:var(--editor-comment);font-style:italic}.syntax-string{color:var(--editor-string)}.syntax-number{color:var(--editor-number)}.syntax-keyword{color:var(--editor-keyword)}.syntax-builtin{color:var(--editor-builtin)}.syntax-punctuation{color:#edddad}
+.editor-toolbar{display:flex;gap:7px;flex-wrap:wrap;padding:10px;background:#1a3b3b;border:2px solid var(--editor-border);border-top:0}
+.editor-toolbar button{min-width:43px;min-height:42px;padding:7px 10px;background:#234745;border:1px solid #52746d;border-radius:3px;color:#caedd9;font:14px Consolas,var(--thai),monospace}
+.editor-toolbar button:hover:not(:disabled){background:#355c51;border-color:var(--mint)}.editor-toolbar button:active:not(:disabled){transform:translateY(1px);background:#1c3835}.editor-toolbar button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.editor-help{font-size:12px;line-height:1.7;color:var(--muted);margin:7px 0 0}.editor-locked{opacity:.8}.skill-choice code{display:block;margin-top:5px;color:var(--mint);font:12px/1.7 Consolas,var(--thai),monospace;overflow-wrap:anywhere}.skill-choice span{min-width:0}
+@media(max-width:600px){.editor-writing .code-editor,.editor-paint{padding-left:12px;padding-right:12px;font-size:16px}.editor-gutter{width:33px;padding-right:6px}.editor-toolbar{gap:6px;padding:8px}.editor-toolbar button{padding:7px 9px}.editor-top{font-size:11px}}
+@media(forced-colors:active){*{scrollbar-color:auto}.editor-paint{visibility:hidden}.editor-writing .code-editor{color:CanvasText;-webkit-text-fill-color:CanvasText}.editor-active-line{display:none}}

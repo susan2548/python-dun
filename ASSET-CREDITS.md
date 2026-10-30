@@ -40,3 +40,16 @@ Source: https://opengameart.org/content/496-pixel-art-icons-for-medievalfantasy-
 Additional potion, armour, focus, ice, shadow and book icons keep their original filenames from the same CC0 496 RPG icons source listed above. `assets/icons/bleed.svg` and `assets/icons/inn.svg` are original project pixel-style SVG artwork.
 
 Interaction references: https://www.roblox.com/games/80734098185936/An-Average-Campaign and https://dl.degica.com/rpgmakerweb/tutorials/RPGVX_Tutorial_Level_7.pdf . No models, UI assets, or game code from Roblox are redistributed.
+
+## Authored pose atlases v1.7
+
+Nine new transparent pose atlases were generated with the **built-in Imagegen tool**, edited from each approved in-game seed. Final project assets:
+
+- `assets/poses/adventurer.png`, `assets/poses/knight.png`, `assets/poses/wizard.png`: 8 poses each, 4 columns × 2 rows, 256px cells. Ready, inhale, windup, strike, charge, release, lift bottle, sip.
+- `assets/poses/zombie.png`, `assets/poses/skeleton.png`, `assets/poses/spider.png`, `assets/poses/wraith.png`, `assets/poses/golem.png`, `assets/poses/necromancer.png`: 6 poses each, 3 columns × 2 rows, 256px cells. Idle pair, windup/contact, skill charge/release.
+
+The **exact final prompt set and source-generation filenames** are saved in `assets/poses/prompts.json`. All characters preserve the source costume, facing, palette and readable identity. Normalization uses one scale across each atlas, reviewed stance roots, bottom baseline, nearest-neighbour sampling, and connected alpha isolation to avoid cutting a staff or including a neighbouring pose. `tools/normalize-poses.py` records that deterministic packing process (development-only Pillow, NumPy, SciPy dependencies). No generation API key is needed to run the game.
+
+`assets/fx/fireball.svg` is original code-native pixel-cluster VFX. Red/blue potion colour feedback is applied at runtime; no external game's art was copied.
+
+Animation study sources: [GDC: Zip! Thwack! Ping!](https://media.gdcvault.com/gdc2018/presentations/Lyndon_Michael_ZipThwackPing.pdf) for anticipation/action/reaction and impact timing; [Aseprite frame duration](https://aseprite.com/docs/frame-duration/) for deliberate frame timing; [Sandro Maglione's pixel character animation guide](https://www.sandromaglione.com/articles/pixel-art-character-animations-guide) for pose readability. These inform the newly implemented motion, rather than supplying redistributed assets.

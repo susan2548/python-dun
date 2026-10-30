@@ -1,4 +1,5 @@
 import { loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.mjs';
+import { SKILLS, skillAliasMap } from './tactical-engine.js';
 
 let runtime;
 const ready = () => runtime ??= loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/'});
@@ -11,10 +12,13 @@ self.onmessage = async ({data}) => {
     py.globals.set('user_code', code);
     py.globals.set('challenge_number', challenge);
     py.globals.set('allowed_skill', skillName);
+    py.globals.set('skill_alias_json', JSON.stringify(skillAliasMap()));
+    py.globals.set('skill_display_name', Object.values(SKILLS).flat().find(s=>s.id===skillName)?.name||skillName);
     py.globals.set('emit_action', (name, value, power) => actions.push({name:String(name), value:String(value), power:Number(power)}));
     py.globals.set('emit_log', line => {if(logs.length < 8) logs.push(String(line));});
     await py.runPythonAsync(`
-import ast
+import ast, json
+skill_aliases = json.loads(skill_alias_json)
 tree = ast.parse(user_code)
 nodes = list(ast.walk(tree))
 if len(nodes) > 240: raise ValueError('โค้ดยาวเกินไปสำหรับโจทย์นี้')
@@ -42,8 +46,10 @@ def power(value):
     return value
 def attack(value): emit_action('attack', '', power(value))
 def skill(name, value):
-    if name != allowed_skill: raise ValueError('ชื่อสกิลไม่ถูกต้อง ดูชื่อในกล่องสกิลอาชีพ')
-    emit_action('skill', name, power(value))
+    canonical = skill_aliases.get(str(name).strip().casefold())
+    if canonical != allowed_skill:
+        raise ValueError('สกิลที่เลือกใช้ skill("' + skill_display_name + '", พลัง) กดปุ่มสกิลใต้ช่องเขียนเพื่อใส่ชื่อได้')
+    emit_action('skill', canonical, power(value))
 scope = {'__builtins__':__builtins__, 'print':print, 'attack':attack, 'skill':skill}
 exec(compile(tree, '<player>', 'exec'), scope)
 `);
