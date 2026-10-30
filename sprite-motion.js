@@ -14,9 +14,11 @@ function load(src) {
   return images.get(src);
 }
 
-async function framesFor(kind, index) {
-  const key = `${kind}-${index}`;
-  if (cache.has(key)) return cache.get(key);
+async function framesFor(kind, index, motion = 'idle') {
+  const key = `${kind}-${index}-${motion}`;
+  if (cache.has(key)) {
+    const frames=cache.get(key); cache.delete(key); cache.set(key,frames); return frames;
+  }
   const promise = (async () => {
     const hero = kind === 'hero';
     const image = await load(`./assets/${hero ? 'heroes' : 'monsters'}.png`);
@@ -35,15 +37,18 @@ async function framesFor(kind, index) {
       const phase = frame / 24 * Math.PI * 2;
       const ghost = !hero && index === 3;
       const breath = (1 - Math.cos(phase)) / 2;
+      const progress = frame/23;
+      const strike = motion==='attack' ? (progress<.25?-Math.sin(progress/.25*Math.PI)*2:Math.sin(Math.min(1,(progress-.25)/.75)*Math.PI)*7) : 0;
+      const casting = motion==='cast'?Math.sin(progress*Math.PI)*3:0;
       // Heavy armour barely breathes; soft robes and undead have more motion.
       const strength = hero ? [1.8, 1.1, 1.6][index] : [2.1, 1.2, 1.7, 2.5, 0.9, 1.5][index];
       for (let y = 0; y < h; y++) {
         const t = y / h;
         // Keep the bottom 18% exactly planted; no whole-image bobbing.
         const upper = Math.max(0, Math.min(1, (0.82 - t) / 0.46));
-        const dy = Math.round(-breath * strength * upper + (ghost ? Math.sin(phase) * 2 : 0));
+        const dy = Math.round(-(motion==='idle'?breath*strength:casting)*upper + (ghost && motion==='idle' ? Math.sin(phase) * 2 : 0));
         const cloth = t > 0.35 && t < 0.82 ? Math.sin((t - 0.35) / 0.47 * Math.PI) : 0;
-        const drift = hero && index === 1 ? 0 : Math.round(Math.sin(phase - t * 3) * cloth * (ghost ? 2 : 1));
+        const drift = Math.round(strike*upper*(hero?1:-1) + (motion==='idle' ? Math.sin(phase - t*3)*cloth*(ghost?2:hero&&index===1?.5:1.5) : 0));
         // Overlapping scanlines fill the tiny gaps caused by the breathing pose.
         paint.drawImage(source, 0, y, w, 1, drift, y + dy, w, 2);
       }
@@ -51,6 +56,8 @@ async function framesFor(kind, index) {
     });
   })();
   cache.set(key, promise);
+  // Keep only the two on-screen actors' three motion sets on small devices.
+  while(cache.size>6) cache.delete(cache.keys().next().value);
   return promise;
 }
 
@@ -60,6 +67,8 @@ export async function mountSpriteMotion(heroIndex, monsterIndex) {
     const hero = fighter.classList.contains('hero');
     try {
       const frames = await framesFor(hero ? 'hero' : 'enemy', hero ? heroIndex : monsterIndex);
+      const actionFrames = await framesFor(hero?'hero':'enemy',hero?heroIndex:monsterIndex,'attack');
+      const castFrames = await framesFor(hero?'hero':'enemy',hero?heroIndex:monsterIndex,'cast');
       if (!fighter.isConnected) return;
       const canvas = document.createElement('canvas');
       canvas.width = frames[0].width; canvas.height = frames[0].height;
@@ -74,12 +83,14 @@ export async function mountSpriteMotion(heroIndex, monsterIndex) {
       let lastFrame = -1;
       const draw = (now) => {
         if (!canvas.isConnected) return;
-        const action = /hero-attack|enemy-attack|hero-cast|enemy-cast/.test(fighter.className);
-        const frame = reducedMotion.matches || action ? 0 : Math.floor(((now - started + i * 650) % period) / period * frames.length);
-        if (frame !== lastFrame) {
+        const motion=fighter.dataset.motion||'idle';
+        const elapsed = Math.max(0,now-started+i*650);
+        const frame = reducedMotion.matches ? 0 : motion!=='idle' ? Math.max(0,Math.min(23,Number(fighter.dataset.pose)||0)) : Math.floor((elapsed % period) / period * frames.length);
+        const key=motion+frame;
+        if (key !== lastFrame) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(frames[frame], 0, 0);
-          lastFrame = frame;
+          ctx.drawImage((motion==='attack'?actionFrames:motion==='cast'?castFrames:frames)[frame], 0, 0);
+          lastFrame = key;
         }
         requestAnimationFrame(draw);
       };

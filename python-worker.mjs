@@ -4,7 +4,7 @@ let runtime;
 const ready = () => runtime ??= loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/'});
 
 self.onmessage = async ({data}) => {
-  const {id, code, challenge, skillName} = data;
+  const {id, code, challenge, skillName, rune = ''} = data;
   const actions = [], logs = [];
   try {
     const py = await ready();
@@ -50,9 +50,12 @@ exec(compile(tree, '<player>', 'exec'), scope)
     py.globals.set('action_count', actions.length);
     py.globals.set('action_power', actions[0]?.power ?? 0);
     py.globals.set('output_json', JSON.stringify(logs));
+    py.globals.set('required_rune', rune);
     await py.runPythonAsync(`
 import json
 output_lines = json.loads(output_json)
+if required_rune:
+    need(required_rune in output_lines, 'แสดงตราผนึกใหม่ด้วย print() ตามโจทย์ก่อน')
 need(action_count == 1, 'ต้องเรียกคำสั่งต่อสู้หนึ่งครั้งจริง ๆ')
 cid = challenge_number
 if cid == 1:

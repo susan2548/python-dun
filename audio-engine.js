@@ -84,6 +84,31 @@ let step = 0;
 let timer;
 let nextStepTime = 0;
 let noiseBuffer;
+const RECORDINGS = {
+  floor0: ['ruins-battle.mp3','Battle — Ted Kerr'],
+  floor1: ['bone-march.mp3','Battle RPG Theme — Cleyton Kauffman'],
+  floor2: ['venom-rush.mp3','Hard Battle 1 — MintoDog'],
+  floor3: ['shadow-hunt.ogg','Battle RPG Variation — Cleyton Kauffman'],
+  floor4: ['arcane-siege.mp3','JRPG Epic Rock — HydroGene'],
+  floor5: ['final-boss.mp3','Epic Boss Battle — Juhani Junkala'],
+};
+let recording;
+let mediaEpoch=0;
+function stopRecording() {
+  mediaEpoch++;
+  if(recording) {recording.pause();recording.removeAttribute('src');recording.load();recording=null;}
+}
+function startRecording() {
+  stopRecording();
+  const track=RECORDINGS[trackKey];
+  if(!track||muted) return;
+  const epoch=mediaEpoch;
+  recording=new Audio('./assets/audio/'+track[0]);
+  recording.loop=true; recording.volume=.44; recording.preload='auto';
+  // Retain synthesized battle audio only as a network-error fallback.
+  recording.onerror=()=>{if(epoch===mediaEpoch&&!muted) {nextStepTime=context.currentTime+.05;tick();}};
+  recording.play().catch(()=>{});
+}
 
 function ensureAudio() {
   if (context) return context;
@@ -235,7 +260,8 @@ function restartMusic() {
     setTimeout(() => previous.disconnect(), 1600);
     nextStepTime = context.currentTime + .05;
   }
-  if (!muted) tick();
+  if (RECORDINGS[trackKey]) startRecording();
+  else {stopRecording();if(!muted) tick();}
 }
 
 export async function setMuted(value) {
@@ -246,6 +272,7 @@ export async function setMuted(value) {
     restartMusic();
   } else {
     clearTimeout(timer);
+    stopRecording();
     if (context) master.gain.setTargetAtTime(0.0001, context.currentTime, 0.05);
   }
   if (context && !muted)
@@ -260,7 +287,7 @@ export function switchTrack(key) {
 }
 
 export function currentTrackName() {
-  return TRACKS[trackKey]?.name || "";
+  return RECORDINGS[trackKey]?.[1] || TRACKS[trackKey]?.name || "";
 }
 
 export function playSfx(kind) {
