@@ -11,6 +11,7 @@ import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=2";
 import { playCutscene, playCombatMotion, playPotionMotion, skillIcon } from "./combat-cinema.js?v=3";
 import { SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js";
 import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js";
+import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=1";
 const LEVELS = [
   {
     name: "ประตูดันเจี้ยน",
@@ -171,12 +172,7 @@ function updateBar() {
       ? `FLOOR ${String(battle.level + 1).padStart(2, "0")} / 06`
       : "CODE • CONQUER • LEARN";
   if (!muted) $("#soundBtn").title = `ปิดเสียง • ${currentTrackName()}`;
-  if(screen==='map' && $('.map-side .stat-grid')) {
-    const c=CLASSES[save.classId],values=[c.hp+save.hpBonus,c.atk+save.attackBonus,save.potions,save.gold];
-    $('.map-side .stat-grid').querySelectorAll('b').forEach((b,i)=>b.textContent=values[i]);
-    const v=getVitals();
-    if($('.expedition-vitals'))$('.expedition-vitals').innerHTML=`♥ HP ${v.hp}/${v.maxHp} · ◆ MP ${v.mp}/${v.maxMp}<small>พลังคงเหลือต่อเนื่องทุกชั้น • ไม่มีฟื้นอัตโนมัติ</small>`;
-  }
+  if(screen==='map' && $('.expedition-hub'))updateExpeditionVitals({save,vitals:getVitals(),hero:CLASSES[save.classId]});
 }
 function toast(message) {
   let t = $("#toast");
@@ -235,50 +231,12 @@ function renderIntro() {
   });
 }
 function renderMap() {
-  if (screen === "battle" && battle) persist();
-  screen = "map";
-  battle = null;
-  window.scrollTo(0, 0);
-  updateBar();
-  let current = clamp(save.cleared + 1, 1, 6),
-    c = CLASSES[save.classId || "adventurer"];
-  const pts = [
-    [13, 79],
-    [35, 65],
-    [59, 78],
-    [80, 56],
-    [56, 36],
-    [23, 27],
-  ];
-  app.innerHTML = `<section class="page-wrap"><div class="map-heading"><div><span class="eyebrow">THE DUNGEON PATH</span><h1 class="pixel-title">แผนที่ดันเจี้ยน</h1><div class="muted">เลือกชั้นที่ปลดล็อก แล้วเขียนโค้ดพิชิตมอนสเตอร์</div></div><div class="map-actions"><button class="btn small" id="quickContinue">▶ ${save.cleared === 6 ? "เล่นบอสอีกครั้ง" : "เล่นชั้นถัดไป"}</button><button class="btn ghost small" id="changeClass">${c.icon} ${c.name}</button><button class="btn gold small" id="shopBtn">✦ ร้านค้า</button></div></div><div class="map-guide">${save.cleared === 6 ? "พิชิตครบ 6 ชั้นแล้ว! เลือกชั้นบนแผนที่เพื่อเล่นซ้ำและเก็บดาวเพิ่ม" : "โหนดสีทองคือชั้นที่เล่นต่อได้ • กด “เล่นชั้นถัดไป” เพื่อเข้าสู่การต่อสู้"}</div><div class="map-layout"><div class="dungeon-map" aria-label="แผนที่หกชั้น"><div class="map-ribbon">DUNGEON / 6 FLOORS</div><svg class="map-path" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M13 79 C25 90 28 60 35 65 S50 90 59 78 S85 72 80 56 S68 35 56 36 S36 20 23 27"/><path class="route-fill" d="M13 79 C25 90 28 60 35 65 S50 90 59 78 S85 72 80 56 S68 35 56 36 S36 20 23 27"/></svg><span class="map-deco" style="left:9%;top:11%">♜</span><span class="map-deco" style="left:72%;top:14%">⌂</span><span class="map-deco" style="left:42%;top:48%">✧</span><span class="map-deco" style="left:81%;top:84%">✝</span>${LEVELS.map(
-    (l, i) => {
-      let done = i < save.cleared,
-        active = i === save.cleared,
-        locked = i > save.cleared;
-      return `<button class="map-node ${done ? "done" : active ? "current" : "locked"}" data-level="${i}" ${locked ? "disabled" : ""} style="left:${pts[i][0]}%;top:${pts[i][1]}%" aria-label="ชั้น ${i + 1} ${l.name} ${locked ? "ยังไม่ปลดล็อก" : ""}"><span class="node-circle">${done ? "✓" : locked ? "◆" : String(i + 1).padStart(2, "0")}</span><span class="node-label">${l.name}</span><span class="node-stars ${done ? "" : "dim"}">${done ? "★".repeat(save.stars[i] || 1) + "☆".repeat(3 - (save.stars[i] || 1)) : active ? "เริ่มที่นี่" : "☆☆☆"}</span></button>`;
-    },
-  ).join(
-    "",
-  )}</div><aside class="map-side"><div class="panel"><span class="eyebrow">YOUR HERO</span><h3>${c.icon} ${c.name}</h3><div class="stat-grid"><span>HP สูงสุด<b>${c.hp + save.hpBonus}</b></span><span>พลังโจมตี<b>${c.atk + save.attackBonus}</b></span><span>ยาฟื้นพลัง<b>${save.potions}</b></span><span>เหรียญ<b>${save.gold}</b></span></div><div class="divider"></div><p>สกิล: <b style="color:var(--gold)">${c.skillName}</b><br>${c.skillDesc}</p></div><div class="panel"><span class="eyebrow">PROGRESS</span><h3>พิชิต ${save.cleared} / 6 ชั้น</h3><div class="progress-track"><i style="width:${(save.cleared / 6) * 100}%"></i></div><p>${save.cleared === 6 ? "คุณพิชิตดันเจี้ยนแล้ว! เลือกชั้นเพื่อเล่นซ้ำได้" : `ชั้นถัดไป: ${LEVELS[Math.min(save.cleared, 5)].name}`}</p><div class="progress-actions"><button class="btn small" id="continueBtn">${save.cleared === 6 ? "เล่นชั้นสุดท้ายอีกครั้ง" : "เข้าสู่ชั้น " + current} →</button><button class="btn ghost small" id="newGameBtn">↺ เริ่มเกมใหม่</button></div></div></aside></div></section>`;
-  document
-    .querySelectorAll("[data-level]")
-    .forEach((b) => (b.onclick = () => startBattle(+b.dataset.level)));
-  $("#continueBtn").onclick = () => startBattle(Math.min(save.cleared, 5));
-  $("#shopBtn").onclick = showShop;
-  $("#changeClass").onclick = showClassPicker;
-  $("#quickContinue").onclick = () => startBattle(Math.min(save.cleared, 5));
-  $("#newGameBtn").onclick = showResetPrompt;
-  const vitals = getVitals();
-  $(".map-side .stat-grid").insertAdjacentHTML("afterend", `<div class="expedition-vitals">♥ HP ${vitals.hp}/${vitals.maxHp} · ◆ MP ${vitals.mp}/${vitals.maxMp}<small>พลังคงเหลือต่อเนื่องทุกชั้น • ไม่มีฟื้นอัตโนมัติ</small></div><button class="btn ghost small" id="campBtn">พักแรม ✦ 30 · +55 HP / +6 MP</button>`);
-  $("#campBtn").onclick = restAtCamp;
-  $('#campBtn').innerHTML=skillIcon('inn')+' โรงแรมแสงตะเกียง →';
-  if(save.activeBattle) {
-    const level=save.activeBattle.level;
-    $('.map-guide').textContent=`มีการต่อสู้ค้างอยู่: ชั้น ${level+1} ${LEVELS[level].name} • เลือด มานา และโจทย์ยังอยู่เหมือนเดิม`;
-    $('#quickContinue').textContent=`▶ เล่นต่อชั้น ${level+1}`;
-    $('#continueBtn').textContent=`กลับสู่การต่อสู้ชั้น ${level+1} →`;
-    $('#quickContinue').onclick=$('#continueBtn').onclick=()=>startBattle(level);
-  }
+  if(screen==='battle'&&battle)persist();
+  screen='map';battle=null;window.scrollTo(0,0);updateBar();
+  renderExpeditionMap({
+    app,save,levels:LEVELS,classes:CLASSES,monsters:MONSTERS,vitals:getVitals(),getVitals,skillIcon,
+    onEnter:startBattle,onShop:showShop,onInn:restAtCamp,onHero:showClassPicker,onReset:showResetPrompt,
+  });
 }
 function getVitals() {
   const c = CLASSES[save.classId || 'adventurer'];
@@ -303,6 +261,7 @@ function showResetPrompt() {
   showModal(
     '<span class="eyebrow">NEW GAME</span><h2 class="pixel-title">เริ่มผจญภัยใหม่?</h2><p>ความคืบหน้า ดาว เหรียญ และของที่ซื้อในเบราว์เซอร์นี้จะเริ่มใหม่ทั้งหมด</p><div class="modal-actions"><button class="btn" id="confirmReset">ยืนยันเริ่มใหม่</button><button class="btn ghost" data-close>ยกเลิก</button></div>',
   );
+  modal.querySelector('[data-close]')?.focus({preventScroll:true});
   $("#confirmReset").onclick = () => {
     save = fresh();
     for (let i = 0; i < 6; i++) sessionStorage.removeItem("dungeon-code-" + i);

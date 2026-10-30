@@ -53,3 +53,17 @@ The **exact final prompt set and source-generation filenames** are saved in `ass
 `assets/fx/fireball.svg` is original code-native pixel-cluster VFX. Red/blue potion colour feedback is applied at runtime; no external game's art was copied.
 
 Animation study sources: [GDC: Zip! Thwack! Ping!](https://media.gdcvault.com/gdc2018/presentations/Lyndon_Michael_ZipThwackPing.pdf) for anticipation/action/reaction and impact timing; [Aseprite frame duration](https://aseprite.com/docs/frame-duration/) for deliberate frame timing; [Sandro Maglione's pixel character animation guide](https://www.sandromaglione.com/articles/pixel-art-character-animations-guide) for pose readability. These inform the newly implemented motion, rather than supplying redistributed assets.
+
+## Expedition map v1.8
+
+`assets/dungeon-atlas.webp` is original environment artwork generated with the **built-in Imagegen tool**. The six chambers are the mossy entrance, ruined hall, green crypt, purple web cavern, cyan arcane library, and crimson-violet throne room. No characters, labels or UI are baked into the image. Source generation: `exec-e9a86184-b3d4-4b94-a469-a605865e26d3.png`. The complete final prompt is in `assets/dungeon-atlas-prompt.txt`.
+
+The final WebP is a lossless conversion of the generated PNG: decoded RGB pixel equality was verified. It reduces the image from 3,234,694 to 2,425,476 bytes. The source PNG remains in the local asset-source archive; only the final WebP is requested by the game. Star/status/lock/path graphics are original SVG/HTML/CSS, with existing character portraits and NPC assets reused.
+
+### Research and adaptation
+
+- [Slay the Spire, official Mega Crit store description](https://store.steampowered.com/app/646570/Slay_the_Spire/) describes planning risky or safe routes through changing layouts. Adaptation here: show the next room's enemy, special move, learning topic and current resources before entry. This game deliberately retains its six-floor linear teaching order; no random branches or skippable lessons were introduced.
+- [Darkest Dungeon, official Red Hook overview](https://www.darkestdungeon.com/darkest-dungeon/) presents distinct forests, warrens and crypts within a dark expedition fantasy. Adaptation here: make each room visually identifiable while keeping the existing dungeon palette and pixel art style.
+- [Official Darkest Dungeon Wiki: Dungeon Map](https://darkestdungeon.wiki.gg/wiki/Map) and [Slay the Spire Wiki: Map Generation](https://slaythespire.wiki.gg/wiki/Map_Generation) were studied for room/path legibility, route state and encounter information. The new board and interface are original; no maps, textures or UI assets from these games are redistributed.
+
+The main visual signature is a living-looking underground atlas with readable overlays. Actual player position, selected preview, completed rooms and locked rooms are separate states. Existing game save, star grading, monster balance, shop stock, rest costs and HP/MP carryover remain owned by their prior game systems.

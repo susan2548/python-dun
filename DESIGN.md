@@ -46,7 +46,9 @@ Chakra Petch supports Thai labels and reading. Press Start 2P is restricted to s
 
 ## Layout
 
-Existing welcome/map/battle layouts remain. Code input is a separate DOM surface beneath the playfield. Native textarea owns scrolling; line numbers and syntax paint follow it. Editor grows from 252px to 420px then scrolls internally. Toolbar wraps on phones. No horizontal page overflow.
+Welcome and battle layouts remain. The v1.8 map uses a six-chamber pixel dungeon atlas, a selected-room dossier, and one adventurer camp strip. At short desktop heights the page narrows to keep all six room controls visible. On phones the full atlas remains visible with numbered markers and stars; full Thai room names appear in the selection status and dossier. No horizontal page overflow.
+
+Code input is a separate DOM surface beneath the playfield. Native textarea owns scrolling; line numbers and syntax paint follow it. Editor grows from 252px to 420px then scrolls internally. Toolbar wraps on phones.
 
 ## Elevation & Depth
 
@@ -65,8 +67,13 @@ Square dungeon panels and pixel clusters. Editor helper buttons use a small 3px 
 | Combat motion | combat-cinema.js + sprite-motion.js | Shared clock for root motion, pose, VFX and exactly one impact; cleaned after completion |
 | Scrollbar | editor.css global baseline | Visible native scrollbar on input; paint/gutter are inert synced mirrors |
 | Toast / modal | game.js existing toast/showModal | Shared status messages, modal focus and Escape behaviour retained |
+| Expedition map | expedition-map.js + expedition-map.css | Read-only room inspection, explicit entry confirmation button, locked/replay/resume states; existing game.js owns starting a battle |
 
 Inputs remain blank at new lessons. Toolbar inserts syntax and exact skill names, leaving the power expression empty. Guard is a mode choice with a separate one-turn confirmation, never fake Python. Busy state locks editing and helper buttons; validation errors keep code for correction. Thai is the UI language, Python API words remain English.
+
+Map material tokens live in `expedition-map.css :root`: brass `--atlas-brass #d8b779`, parchment `--atlas-paper #efe5ca`, and dark slate `--atlas-dark #0c171f`. Existing mint remains the completed-route colour; gold marks the actual current/resumable room. A selected locked room uses a pale steel border, so selection never masquerades as an unlock. Stars use explicit filled/outlined SVGs with textual scores, not dark font glyphs.
+
+Clicking a room only previews its scene, monster, HP/attack and Python topics. It does not start a battle or write a save. The mission entry button names the selected floor; the global continue button always resumes the unfinished battle or frontier. Other rooms cannot start while a battle is unfinished. Shop/inn/class actions reuse existing NPC and confirmation owners. HP/MP remains visible near entry and in camp; viewing the map never heals. The learning sequence stays linear despite the illustrated dungeon corridors.
 
 Atlases contain authored joint/weapon poses at one shared scale with reviewed stance roots. Idle breath keeps the lower body planted. Attack sequence: windup → dash → contact hold → recoil → return. Spell sequence: charge pose → release pose → projectile → impact. Potion sequence: lift → sip/apply → lower. Reduced motion removes travel and idle animation while preserving timing semantics and one impact.
 
