@@ -7,14 +7,14 @@ import {
 } from "./audio-engine.js?v=3";
 import { mountSpriteMotion } from "./sprite-motion.js?v=4";
 import { mountCodeEditor } from "./code-editor.js?v=1";
-import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=3";
+import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=4";
 import { playCutscene, playCombatMotion, playPotionMotion, skillIcon } from "./combat-cinema.js?v=3";
-import { SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=2";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=2";
-import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=1";
+import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=3";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=3";
+import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=2";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
-import { ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=1";
+import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
 const LEVELS = [
   {
     name: "ประตูดันเจี้ยน",
@@ -141,7 +141,7 @@ function updateBar() {
       ? `FLOOR ${String(battle.level + 1).padStart(2, "0")} / 06`
       : "CODE • CONQUER • LEARN";
   if (!muted) $("#soundBtn").title = `ปิดเสียง • ${currentTrackName()}`;
-  if(screen==='map' && $('.expedition-hub'))updateExpeditionVitals({save,vitals:getVitals(),hero:CLASSES[save.classId]});
+  if(screen==='map' && save.classId && $('.expedition-hub'))updateExpeditionVitals({save,vitals:getVitals(),hero:CLASSES[save.classId]});
 }
 function toast(message) {
   let t = $("#toast");
@@ -233,6 +233,11 @@ function showResetPrompt() {
   );
   modal.querySelector('[data-close]')?.focus({preventScroll:true});
   $("#confirmReset").onclick = () => {
+    // Leave the map before saving a profile with no selected class.
+    screen = 'intro';
+    battle = null;
+    codeEditor = null;
+    battleHistoryOpen = false;
     save = fresh();
     for (let i = 0; i < 6; i++) sessionStorage.removeItem("dungeon-code-" + i);
     persist();
@@ -355,6 +360,7 @@ function renderBattle(shouldScroll = true) {
     <div class="editor-bottom"><div class="action-hint"></div><button class="btn" id="runBtn">▶ รันโค้ด (1 เทิร์น)</button></div>
     <div class="console" id="console" role="status" aria-live="polite">เขียนคำตอบเอง แล้วกดรัน • ถ้าไม่ผ่านจะบอกจุดที่ต้องแก้</div>
     <div class="battle-controls"><button class="btn ghost small" id="potionBtn">ยาฮีล</button><button class="btn ghost small" id="hintBtn">? ดูคำใบ้</button><button class="btn ghost small" id="resetCode">↺ ล้างช่องเขียน</button><button class="btn ghost small" id="rulesBtn">ℹ วิธีเล่น</button></div>
+    <p class="supply-note">ยาฮีล +20 HP / ยามานา +3 MP • ใช้ 1 เทิร์น พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น</p>
   </section>
   <details class="panel battle-info combat-history" ${battleHistoryOpen?'open':''}>
     <summary><span>⚔ ประวัติการต่อสู้</span><span class="history-meta"><span class="round">TURN ${battle.turn}</span><span class="history-toggle-label">เปิด / ปิดประวัติ</span><span class="history-chevron" aria-hidden="true">⌄</span></span></summary>
@@ -478,7 +484,7 @@ async function executeUtilityTurn() {
   $('#console').textContent=command==='guard'?'ป้องกันแล้ว เลือกคำสั่งสำหรับเทิร์นถัดไป':'Focus แล้ว • +1 MP ไม่เกินค่าสูงสุด และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30%';
 }
 function showRules() {
-  showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูกและโกเลมไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่จับเวลาอ่านโจทย์ ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องผ่าน 3 บทเรียนและลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
+  showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูกและโกเลมไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่จับเวลาอ่านโจทย์ ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องผ่าน 3 บทเรียนและลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li><li>ใช้ยาฟื้น 20 HP หรือ 3 MP พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น ยังใช้หนึ่งเทิร์นและสถานะยังเดินเวลา</li><li>ดาววัดการเขียนโค้ด: ไม่แก้คำตอบ = 3 ดาว, แก้ 1–2 ครั้ง = 2 ดาว, มากกว่านั้น = 1 ดาว เลือดคงเหลือไม่หักดาว</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
 }
 async function usePotion(type='health') {
   if(typeof type!=='string')type='health';
@@ -488,17 +494,17 @@ async function usePotion(type='health') {
   battle.busy=true;$('#runBtn').disabled=true;renderCommandMenu();
   await frameBattle();if(!heroStartTurn())return;
   save[inventory]--;
-  consumeFocus(battle.heroStatuses,'item');
+  prepareItemTurn(battle.heroStatuses);
   const gain=mana?Math.min(POTION_MP,battle.maxMp-battle.mp):Math.min(POTION_HP,battle.maxHp-battle.hp);
-  expireActionStatuses(battle.heroStatuses);advanceCooldowns(battle);
+  advanceCooldowns(battle);
   await playPotionMotion(type,()=>{
     if(mana)battle.mp+=gain;else battle.hp+=gain;
-    playSfx('potion');spawnBattleFx('heal','hero');log(`ดื่มยา: ฟื้น ${gain} ${mana?'MP':'HP'} • ใช้หนึ่งเทิร์น`);updateCombat();
+    playSfx('potion');spawnBattleFx('heal','hero');log(`ดื่มยา: ฟื้น ${gain} ${mana?'MP':'HP'} • ตั้งรับลดดาเมจสวน 60% ครั้งนี้ • ใช้หนึ่งเทิร์น`);updateCombat();
   });
   await wait(180);await enemyTurn();
   if(checkBattleEnd())return;
   battle.turn++;battle.busy=false;renderBattle(false);persist();
-  $('#console').textContent=`ใช้ยาแล้ว ฟื้น ${gain} ${mana?'MP':'HP'} ศัตรูสวนกลับหนึ่งครั้ง`;
+  $('#console').textContent=`ใช้ยาแล้ว ฟื้น ${gain} ${mana?'MP':'HP'} • ตั้งรับลดดาเมจสวน 60% ครั้งนี้ ศัตรูยังสวนหนึ่งครั้ง`;
 }
 function log(message) {
   battle.logs.push(message);
@@ -829,12 +835,7 @@ function victory() {
   battle.rewarded = true;
   const i = battle.level,
     first = i >= save.cleared,
-    stars =
-      battle.mistakes === 0 && battle.hp / battle.maxHp > 0.65
-        ? 3
-        : battle.mistakes <= 2
-          ? 2
-          : 1,
+    stars = lessonStars(battle.mistakes),
     gold = first ? 35 + i * 12 : 10;
   save.stars[i] = Math.max(save.stars[i] || 0, stars);
   save.cleared = Math.max(save.cleared, i + 1);
@@ -842,7 +843,7 @@ function victory() {
   persist();
   playSfx("victory");
   showModal(
-    `<span class="eyebrow">FLOOR ${String(i + 1).padStart(2, "0")} CLEAR</span><h2 class="pixel-title">${i === 5 ? "พิชิตดันเจี้ยน!" : "ผ่านชั้น " + (i + 1) + " แล้ว!"}</h2><div class="result-stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div><p>คุณเอาชนะ <b>${LEVELS[i].enemy}</b> ด้วยการเขียน Python ได้รับ <b style="color:var(--gold)">✦ ${gold}</b> เหรียญ<br>ผ่าน ${battle.answeredQuestions} โจทย์ • แก้โค้ด ${battle.mistakes} ครั้ง • HP คงเหลือ ${battle.hp}/${battle.maxHp}</p><div class="modal-actions"><button class="btn" id="resultMap">ดูแผนที่ →</button>${i < 5 ? '<button class="btn gold" id="resultNext">เข้าชั้นถัดไป</button>' : ""}<button class="btn ghost" id="resultShop">ร้านค้า</button></div>`,
+    `<span class="eyebrow">FLOOR ${String(i + 1).padStart(2, "0")} CLEAR</span><h2 class="pixel-title">${i === 5 ? "พิชิตดันเจี้ยน!" : "ผ่านชั้น " + (i + 1) + " แล้ว!"}</h2><div class="result-stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div><p>คุณเอาชนะ <b>${LEVELS[i].enemy}</b> ด้วยการเขียน Python ได้รับ <b style="color:var(--gold)">✦ ${gold}</b> เหรียญ<br>ผ่าน ${battle.answeredQuestions} โจทย์ • แก้โค้ด ${battle.mistakes} ครั้ง • HP คงเหลือ ${battle.hp}/${battle.maxHp}</p><p class="star-rules">ดาววัดการเขียนโค้ด: ไม่แก้คำตอบ = 3 ดาว · แก้ 1–2 ครั้ง = 2 ดาว · มากกว่านั้น = 1 ดาว</p><div class="modal-actions"><button class="btn" id="resultMap">ดูแผนที่ →</button>${i < 5 ? '<button class="btn gold" id="resultNext">เข้าชั้นถัดไป</button>' : ""}<button class="btn ghost" id="resultShop">ร้านค้า</button></div>`,
   );
   $("#resultMap").onclick = () => {
     closeModal();

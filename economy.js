@@ -1,7 +1,7 @@
-import {POTION_HP,POTION_MP} from './tactical-engine.js?v=2';
+import {POTION_HP,POTION_MP} from './tactical-engine.js?v=3';
 export const GOODS=[
-  {id:'potion',name:'ยาฟื้นพลัง',icon:'health',price:25,description:`ฟื้น ${POTION_HP} HP • เป็นของฉุกเฉิน ใช้แล้วศัตรูสวนกลับ`,speech:`ขวดแดงนี้ช่วยประคองตัวได้ ${POTION_HP} HP แต่ตอนดื่มเจ้าจะเปิดช่องให้ศัตรู! ถ้าเพิ่งจบชั้น แวะโรงแรมจะคุ้มกว่า`,stock:3},
-  {id:'mana',name:'ยามานา',icon:'mana',price:18,description:`ฟื้น ${POTION_MP} MP • ใช้หนึ่งเทิร์น ไม่ล้างคูลดาวน์`,speech:`ขวดฟ้าฟื้นแค่ ${POTION_MP} MP จงเลือกคาถาให้ดี ถ้ายังไม่อันตราย ลอง Focus เพื่อเก็บมานาทีละหนึ่ง`,stock:3},
+  {id:'potion',name:'ยาฟื้นพลัง',icon:'health',price:25,description:`ฟื้น ${POTION_HP} HP • ใช้หนึ่งเทิร์น • ตั้งรับลดดาเมจสวน 60%`,speech:`ขวดแดงฟื้น ${POTION_HP} HP เจ้าจะตั้งรับลดดาเมจสวน 60% ขณะดื่ม แต่ศัตรูยังโจมตีและสถานะยังเดินเวลา ถ้าเพิ่งจบชั้น แวะโรงแรมจะคุ้มกว่า`,stock:3},
+  {id:'mana',name:'ยามานา',icon:'mana',price:18,description:`ฟื้น ${POTION_MP} MP • ใช้หนึ่งเทิร์น • ตั้งรับลดดาเมจสวน 60%`,speech:`ขวดฟ้าฟื้นแค่ ${POTION_MP} MP จงเลือกคาถาให้ดี ถ้ายังไม่อันตราย ลอง Focus เพื่อเก็บมานาทีละหนึ่ง`,stock:3},
   {id:'attack',name:'ลับคมอาวุธ',icon:'attack',price:60,description:'พลังโจมตีถาวร +2 • สูงสุด 3 ขั้น ราคาสูงขึ้นตามขั้น',speech:'คมดาบดี ๆ ไม่ทดแทนแผนการที่ดีนะ! ข้าลับให้แรงขึ้น 2 หน่วย แต่แต่ละขั้นใช้วัสดุมากขึ้น',stock:3},
   {id:'hp',name:'เกราะหัวใจ',icon:'armor',price:55,description:'HP สูงสุด +15 • ไม่เติมเลือดปัจจุบัน • สูงสุด 3 ขั้น',speech:'เกราะนี้เพิ่มเพดานเลือด 15 หน่วย ไม่ใช่ยาฟื้นเลือดนะ ถ้าบาดเจ็บอยู่ต้องพักกับคุณมิลาที่โรงแรม',stock:3},
 ];

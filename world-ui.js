@@ -1,4 +1,4 @@
-import {SKILLS} from './tactical-engine.js?v=2';
+import {SKILLS} from './tactical-engine.js?v=3';
 import {GOODS,quote,purchase} from './economy.js';
 import {skillIcon} from './combat-cinema.js?v=2';
 const POS={adventurer:0,knight:50,wizard:100};

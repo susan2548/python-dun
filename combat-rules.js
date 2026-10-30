@@ -1,6 +1,6 @@
 // Pure combat rules shared by the game and balance checks.
 import {CLASSES} from './hero-classes.js?v=1';
-import {SKILLS} from './tactical-engine.js?v=2';
+import {SKILLS} from './tactical-engine.js?v=3';
 export const MONSTERS = [
   { hp: 62, atk: 14, skill: 'กัดแพร่เชื้อ', icon: 'poison', description: 'เทิร์นคู่กัดแรงขึ้น • ถ้าโดน มีโอกาสติดพิษ 60% (4 HP / 2 เทิร์น)' },
   { hp: 90, atk: 17, skill: 'โล่กระดูก / ดาบสะบั้น', icon: 'shield', description: 'เทิร์นคู่ตั้งเกราะลดดาเมจครั้งถัดไป 45% ก่อนฟันหนัก • ไม่ติดเลือดไหล' },

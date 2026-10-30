@@ -1,4 +1,5 @@
 /* One reading desk on the left, one command desk on the right. */
+.battle-workspace .supply-note,.modal .star-rules { font:12px/1.8 'Chakra Petch',sans-serif; color:var(--muted); margin:10px 0 0; }
 .battle-workspace { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); align-items:start; }
 .battle-briefing { display:grid; gap:18px; min-width:0; }
 .battle-workspace .lesson-panel,.battle-workspace .battle-intel { padding:19px; min-width:0; }

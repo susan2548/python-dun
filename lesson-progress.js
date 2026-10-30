@@ -1,4 +1,7 @@
 export const CORE_LESSONS = 3;
+export function lessonStars(mistakes=0) {
+  return mistakes<=0 ? 3 : mistakes<=2 ? 2 : 1;
+}
 
 // phase is the current question index; it is not a count of accepted answers
 // while an attack is playing. Track accepted answers explicitly for every exit.

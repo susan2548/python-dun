@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
-import {SKILLS,POTION_HP,POTION_MP,ensureTactics,addStatus,tickDots,expireActionStatuses,advanceCooldowns,consumeFocus,accuracy,chance,statusChance,heroDamage,enemyDamage} from './tactical-engine.js';
+import {SKILLS,POTION_HP,POTION_MP,prepareItemTurn,ensureTactics,addStatus,tickDots,expireActionStatuses,advanceCooldowns,consumeFocus,accuracy,chance,statusChance,heroDamage,enemyDamage} from './tactical-engine.js';
+import {lessonStars} from './lesson-progress.js';
+const sipping={focused:{turns:1,power:0},fortified:{turns:2,power:0}};
+prepareItemTurn(sipping);assert(!sipping.focused);assert.equal(sipping.fortified.turns,1);assert.equal(sipping.guard.turns,1);
+assert.equal(enemyDamage(36,sipping,{}),11,'Items gain one guarded counter, while existing armor remains effective');
+assert.equal(enemyDamage(36,{guard:{turns:1}},{}),15,'A 20HP potion must help against the 36-damage boss counter');
+assert.deepEqual([0,1,2,3,12].map(lessonStars),[3,2,2,1,1],'Stars grade code correction count rather than class HP or random enemy hits');
 import {GOODS,quote,purchase} from './economy.js';
 const b=ensureTactics({level:0,rng:42,poison:2,poisonDamage:4,web:1});
 assert.equal(b.heroStatuses.poison.turns,2,'Old save poison migrates without disappearing');
