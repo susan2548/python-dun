@@ -1,4 +1,5 @@
 /* Thai learning hierarchy: room → lesson → objective → blank editor. */
+.lesson-completion-note { font:13px/1.7 'Chakra Petch',sans-serif; color:var(--muted); margin:8px 0 12px; }
 .battle-top { align-items:center; }
 .battle-top > div { min-width:0; }
 .battle-top .eyebrow { display:block; color:var(--mint); }

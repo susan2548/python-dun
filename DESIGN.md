@@ -70,6 +70,8 @@ Square dungeon panels and pixel clusters. Editor helper buttons use a small 3px 
 | Expedition map | expedition-map.js + expedition-map.css | Read-only room inspection, explicit entry confirmation button, locked/replay/resume states; existing game.js owns starting a battle |
 | Lesson and objective | game.js + learning-ui.css | Separate 22px Thai lesson heading; gold objective card precedes action choices, 21px prompt, explicit scroll/focus button to the blank editor; 19px text on phones |
 | Status details | status-inspector.js + learning-ui.css | Both actors use real icon buttons. Hover/keyboard focus explains effects; click/tap pins a nonmodal panel with close/Escape/outside dismissal. Body-level positioning avoids scene clipping. Viewing never spends a turn. |
+| Class statistics | hero-classes.js | One registry for roster/dossier, starting resource caps and combat damage. Adventurer 105 HP/10 MP/15 ATK, knight 145/8/9, wizard 82/24/6. Upgrade migration preserves remaining MP fraction once and never resets progress or injuries. |
+| Required lesson completion | lesson-progress.js | Accepted answers are counted separately from the current phase. All direct/status damage keeps enemies at 1 HP until three answers pass. Three answers alone do not force a kill. Utility turns do not advance lessons. |
 
 Inputs remain blank at new lessons. Toolbar inserts syntax and exact skill names, leaving the power expression empty. Guard is a mode choice with a separate one-turn confirmation, never fake Python. Busy state locks editing and helper buttons; validation errors keep code for correction. Thai is the UI language, Python API words remain English.
 

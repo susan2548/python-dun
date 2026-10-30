@@ -1,4 +1,4 @@
-import {POTION_HP,POTION_MP} from './tactical-engine.js';
+import {POTION_HP,POTION_MP} from './tactical-engine.js?v=2';
 export const GOODS=[
   {id:'potion',name:'ยาฟื้นพลัง',icon:'health',price:25,description:`ฟื้น ${POTION_HP} HP • เป็นของฉุกเฉิน ใช้แล้วศัตรูสวนกลับ`,speech:`ขวดแดงนี้ช่วยประคองตัวได้ ${POTION_HP} HP แต่ตอนดื่มเจ้าจะเปิดช่องให้ศัตรู! ถ้าเพิ่งจบชั้น แวะโรงแรมจะคุ้มกว่า`,stock:3},
   {id:'mana',name:'ยามานา',icon:'mana',price:18,description:`ฟื้น ${POTION_MP} MP • ใช้หนึ่งเทิร์น ไม่ล้างคูลดาวน์`,speech:`ขวดฟ้าฟื้นแค่ ${POTION_MP} MP จงเลือกคาถาให้ดี ถ้ายังไม่อันตราย ลอง Focus เพื่อเก็บมานาทีละหนึ่ง`,stock:3},

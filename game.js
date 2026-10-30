@@ -7,12 +7,14 @@ import {
 } from "./audio-engine.js?v=3";
 import { mountSpriteMotion } from "./sprite-motion.js?v=4";
 import { mountCodeEditor } from "./code-editor.js?v=1";
-import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=2";
+import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=3";
 import { playCutscene, playCombatMotion, playPotionMotion, skillIcon } from "./combat-cinema.js?v=3";
-import { SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js";
+import { SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=2";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=2";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=1";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
+import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
+import { ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=1";
 const LEVELS = [
   {
     name: "ประตูดันเจี้ยน",
@@ -78,41 +80,6 @@ const LESSONS = [
   "class สร้างตัวละคร/วัตถุ และ try/except จัดการข้อผิดพลาด",
 ];
 LEVELS.forEach((level, i) => Object.assign(level, {hp: MONSTERS[i].hp, atk: MONSTERS[i].atk}));
-const CLASSES = {
-  adventurer: {
-    name: "นักผจญภัย",
-    icon: "◈",
-    hp: 105,
-    mp: 10,
-    atk: 10,
-    skill: "double_strike",
-    skillName: "ฟันสองจังหวะ",
-    skillDesc: "เลือดไหล 45% • ใช้ 3 MP / CD 2",
-    flavor: "คล่องตัวและสมดุล เหมาะกับการเริ่มสำรวจ",
-  },
-  knight: {
-    name: "อัศวิน",
-    icon: "♜",
-    hp: 145,
-    mp: 10,
-    atk: 11,
-    skill: "shield_bash",
-    skillName: "กระแทกโล่",
-    skillDesc: "โจมตีพร้อมตั้งรับ • 3 MP / CD 2",
-    flavor: "เลือดสูงและรับความเสียหายได้ดี",
-  },
-  wizard: {
-    name: "พ่อมด",
-    icon: "✧",
-    hp: 82,
-    mp: 12,
-    atk: 8,
-    skill: "fireball",
-    skillName: "ลูกไฟเวท",
-    skillDesc: "เผาไหม้ 55% • 3 MP / ไม่มีคูลดาวน์",
-    flavor: "เลือดน้อย แต่โจมตีด้วยเวทได้แรง",
-  },
-};
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -140,6 +107,7 @@ try {
 } catch {
   save = fresh();
 }
+migrateClassBalance(save);
 let screen = "intro",
   battle = null,
   selected = "adventurer",
@@ -326,6 +294,7 @@ function startBattle(index) {
   battle = {
     level: index,
     phase: 0,
+    answeredQuestions: 0,
     mistakes: 0,
     hp: vitals.hp,
     maxHp: c.hp + save.hpBonus,
@@ -360,6 +329,7 @@ function spritePosition(n) {
 }
 function renderBattle(shouldScroll = true) {
   ensureTactics(battle);normalizeSkill(battle,save.classId);
+  ensureLessonProgress(battle);
   const l = LEVELS[battle.level],
     c = CLASSES[save.classId];
   if (shouldScroll) window.scrollTo(0, 0);
@@ -376,7 +346,8 @@ function renderBattle(shouldScroll = true) {
     `<div class="fighter-shadow hero-shadow"></div><div class="fighter-shadow enemy-shadow"></div><div class="fx-layer" aria-hidden="true"></div><div class="music-chip">♫ ${currentTrackName()}</div><div class="combat-announcer" aria-live="polite"></div>`,
   );
   mountSpriteMotion(["adventurer", "knight", "wizard"].indexOf(save.classId), l.sprite);
-  $('.challenge-head strong').textContent = battle.phase < 3 ? `โจทย์ ${battle.phase+1} / 3` : `ทำลายตราผนึก • รอบ ${battle.phase-2}`;
+  $('.challenge-head strong').textContent = battle.phase < 3 ? `โจทย์หลัก ${battle.phase+1} / 3` : `ทำลายตราผนึก • รอบ ${battle.phase-2}`;
+  $(".challenge-head").insertAdjacentHTML("afterend", `<p class="lesson-completion-note">${battle.answeredQuestions<3?`ผ่านโจทย์หลัก ${battle.answeredQuestions}/3 • ต้องผ่านครบ 3 ข้อ และลด HP ศัตรูจนหมด จึงจบด่าน`:"ผ่านโจทย์หลักครบ 3 ข้อแล้ว • ฝึกโจทย์ต่อพร้อมตราผนึกใหม่จนกว่า HP ศัตรูจะหมด"}</p>`);
   $('.challenge-head span').textContent = '●'.repeat(Math.min(battle.phase,3)) + '○'.repeat(Math.max(0,3-battle.phase));
   $('.skill-box strong').innerHTML = `${skillIcon(c.skill)} สกิลอาชีพ`;
   $('.skill-box p').textContent='เลือกโหมดสกิลเพื่อดู MP คูลดาวน์ และโอกาสติดสถานะก่อนเขียนคำสั่ง';
@@ -471,7 +442,7 @@ function heroStartTurn() {
 }
 function checkBattleEnd() {
   if(battle.hp<=0){battle.busy=false;defeat();return true;}
-  if(battle.enemyHp<=0&&battle.phase>=2){battle.finished=true;battle.busy=false;victory();return true;}
+  if(canClaimVictory(battle)){battle.finished=true;battle.busy=false;victory();return true;}
   return false;
 }
 async function executeUtilityTurn() {
@@ -622,7 +593,7 @@ function damageEnemy(amount, label) {
     battle.enemyGuard = false;
     log(`${LEVELS[battle.level].enemy} ปัดป้องบางส่วน!`);
   }
-  battle.enemyHp = Math.max(battle.phase < 2 ? 1 : 0, battle.enemyHp - amount);
+  battle.enemyHp = Math.max(enemyHpFloor(battle), battle.enemyHp - amount);
   floatDamage(amount,'enemy');
   log(`${label} สร้างความเสียหาย ${amount}`);
   flash(".fighter.enemy");
@@ -662,7 +633,7 @@ async function applyAction(a) {
 }
 async function enemyTurn() {
   for(const hit of tickDots(battle.enemyStatuses)) {
-    battle.enemyHp=Math.max(battle.phase<2?1:0,battle.enemyHp-hit.damage);
+    battle.enemyHp=Math.max(enemyHpFloor(battle),battle.enemyHp-hit.damage);
     floatDamage(hit.damage,'enemy');log(`${STATUS[hit.id].name} ทำให้ศัตรูเสีย ${hit.damage} HP`);
   }
   updateCombat();if(battle.enemyHp<=0)return;
@@ -801,6 +772,7 @@ async function executeTurn() {
   if(!heroStartTurn())return;
   announceCombat("คำตอบถูกต้อง • เตรียมโจมตี!");
   await wait(400);
+  recordCorrectAnswer(battle);
   await applyAction(action);
   battle.pressure=0;
   log(
@@ -808,7 +780,7 @@ async function executeTurn() {
   );
   updateCombat();
   await wait(450);
-  if (battle.phase >= 2 && battle.enemyHp <= 0) {
+  if (canClaimVictory(battle)) {
     battle.finished = true;
     out.textContent =
       "✓ พิชิตศัตรูแล้ว! " + TAKEAWAYS[battle.level][battle.phase % 3];
@@ -852,7 +824,7 @@ function victory() {
   persist();
   playSfx("victory");
   showModal(
-    `<span class="eyebrow">FLOOR ${String(i + 1).padStart(2, "0")} CLEAR</span><h2 class="pixel-title">${i === 5 ? "พิชิตดันเจี้ยน!" : "ผ่านชั้น " + (i + 1) + " แล้ว!"}</h2><div class="result-stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div><p>คุณเอาชนะ <b>${LEVELS[i].enemy}</b> ด้วยการเขียน Python ได้รับ <b style="color:var(--gold)">✦ ${gold}</b> เหรียญ<br>ผ่าน ${battle.phase+1} โจทย์ • แก้โค้ด ${battle.mistakes} ครั้ง • HP คงเหลือ ${battle.hp}/${battle.maxHp}</p><div class="modal-actions"><button class="btn" id="resultMap">ดูแผนที่ →</button>${i < 5 ? '<button class="btn gold" id="resultNext">เข้าชั้นถัดไป</button>' : ""}<button class="btn ghost" id="resultShop">ร้านค้า</button></div>`,
+    `<span class="eyebrow">FLOOR ${String(i + 1).padStart(2, "0")} CLEAR</span><h2 class="pixel-title">${i === 5 ? "พิชิตดันเจี้ยน!" : "ผ่านชั้น " + (i + 1) + " แล้ว!"}</h2><div class="result-stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</div><p>คุณเอาชนะ <b>${LEVELS[i].enemy}</b> ด้วยการเขียน Python ได้รับ <b style="color:var(--gold)">✦ ${gold}</b> เหรียญ<br>ผ่าน ${battle.answeredQuestions} โจทย์ • แก้โค้ด ${battle.mistakes} ครั้ง • HP คงเหลือ ${battle.hp}/${battle.maxHp}</p><div class="modal-actions"><button class="btn" id="resultMap">ดูแผนที่ →</button>${i < 5 ? '<button class="btn gold" id="resultNext">เข้าชั้นถัดไป</button>' : ""}<button class="btn ghost" id="resultShop">ร้านค้า</button></div>`,
   );
   $("#resultMap").onclick = () => {
     closeModal();

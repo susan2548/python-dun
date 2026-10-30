@@ -1,11 +1,11 @@
-import {SKILLS} from './tactical-engine.js';
+import {SKILLS} from './tactical-engine.js?v=2';
 import {GOODS,quote,purchase} from './economy.js';
 import {skillIcon} from './combat-cinema.js?v=2';
 const POS={adventurer:0,knight:50,wizard:100};
 const ROLES={adventurer:'ROGUE / เลือดไหล • ม่านควัน',knight:'KNIGHT / ป้องกัน • เกราะเหล็ก',wizard:'MAGE / เผาไหม้ • เยือกแข็ง'};
 const portrait=(id,extra='')=>`<div class="hero-portrait ${extra}" style="background-position:${POS[id]}% center" aria-hidden="true"></div>`;
 function heroCards(classes,selected,attribute='data-hero') {
-  return Object.entries(classes).map(([id,c])=>`<button class="portrait-card ${id===selected?'selected':''}" ${attribute}="${id}" aria-pressed="${id===selected}">${portrait(id)}<span class="portrait-caption"><b>${c.name}</b><small>HP ${c.hp} · MP ${c.mp}</small></span></button>`).join('');
+  return Object.entries(classes).map(([id,c])=>`<button class="portrait-card ${id===selected?'selected':''}" ${attribute}="${id}" aria-pressed="${id===selected}">${portrait(id)}<span class="portrait-caption"><b>${c.name}</b><small>HP ${c.hp} · MP ${c.mp}</small><small>ATK ${c.atk}</small></span></button>`).join('');
 }
 export function renderWelcome({app,classes,selected,hasSave,onSelect,onStart}) {
   app.innerHTML=`<section class="welcome-scene"><div class="welcome-shade"></div><div class="welcome-copy"><span class="eyebrow">THE RUNEBREAKER CHRONICLES</span><h1 class="pixel-title">PYTHON<br><span>DUNGEON</span></h1><p class="welcome-subtitle">ทุกบรรทัดคือพลังของเจ้า</p><p>อ่านทางศัตรู เลือกคำสั่ง แล้วเขียน Python<br>ฝ่าคำสาปหกชั้นด้วยความรู้และแผนการ</p><div class="welcome-features"><span>6 บทเรียน</span><span>3 อาชีพ / 6 สกิล</span><span>ต่อสู้เทิร์นเบส</span></div><div class="welcome-roster"><span class="eyebrow">CHOOSE YOUR HERO</span><div class="portrait-roster">${heroCards(classes,selected)}</div></div><div class="hero-summary"><b>${classes[selected].name}</b><span>${ROLES[selected]}</span></div><button class="btn welcome-start" id="startBtn">${hasSave?'กลับสู่การผจญภัย':'เริ่มผจญภัย'} <span>→</span></button><small class="welcome-save">บันทึกอัตโนมัติในเบราว์เซอร์ • โค้ดต้องเขียนเอง</small></div><div class="welcome-character">${portrait(selected)}<div class="welcome-classmark">${classes[selected].name}<small>${ROLES[selected]}</small></div></div><div class="welcome-bottom">CODE THE SPELL. READ THE ENEMY. SURVIVE THE DUNGEON.</div></section>`;

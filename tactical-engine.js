@@ -9,8 +9,8 @@ export const SKILLS = {
     {id:'iron_oath',name:'คำสัตย์เหล็กกล้า',mp:4,cd:3,bonus:5,fortify:true,icon:'shield',description:'โจมตีและเกราะเหล็ก 2 เทิร์น ลดดาเมจเข้าอีก 25%'},
   ],
   wizard: [
-    {id:'fireball',name:'ลูกไฟเวท',mp:3,cd:0,bonus:16,status:'burn',chance:.55,turns:2,power:5,icon:'fireball',description:'ไม่มีคูลดาวน์ • เผาไหม้ 55% นาน 2 เทิร์น'},
-    {id:'frost_lance',name:'หอกเหมันต์',mp:4,cd:3,bonus:11,status:'chill',chance:.7,turns:2,icon:'frost',description:'เยือกแข็ง 70% นาน 2 เทิร์น ลดพลังโจมตีศัตรู 25%'},
+    {id:'fireball',name:'ลูกไฟเวท',mp:3,cd:0,bonus:24,status:'burn',chance:.55,turns:2,power:5,icon:'fireball',description:'ไม่มีคูลดาวน์ • ดาเมจเวท +24 • เผาไหม้ 55% นาน 2 เทิร์น'},
+    {id:'frost_lance',name:'หอกเหมันต์',mp:4,cd:3,bonus:20,status:'chill',chance:.7,turns:2,icon:'frost',description:'ดาเมจเวท +20 • เยือกแข็ง 70% นาน 2 เทิร์น ลดพลังโจมตีศัตรู 25%'},
   ],
 };
 export const STATUS = {

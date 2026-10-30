@@ -1,4 +1,6 @@
 // Pure combat rules shared by the game and balance checks.
+import {CLASSES} from './hero-classes.js?v=1';
+import {SKILLS} from './tactical-engine.js?v=2';
 export const MONSTERS = [
   { hp: 62, atk: 14, skill: 'กัดแพร่เชื้อ', icon: 'poison', description: 'เทิร์นคู่กัดแรงขึ้น • ถ้าโดน มีโอกาสติดพิษ 60% (4 HP / 2 เทิร์น)' },
   { hp: 90, atk: 17, skill: 'โล่กระดูก / ดาบสะบั้น', icon: 'shield', description: 'เทิร์นคู่ตั้งเกราะลดดาเมจครั้งถัดไป 45% ก่อนฟันหนัก • ไม่ติดเลือดไหล' },
@@ -20,9 +22,9 @@ export function enemyIntent(level, turn) {
   return move;
 }
 export function attackDamage(classId, level, bonus, power, skill, web = false, guarded = false) {
-  const atk = {adventurer:10, knight:11, wizard:8}[classId];
-  const extra = skill ? {adventurer:18, knight:12, wizard:25}[classId] : 0;
-  return Math.max(1, Math.round((atk + bonus + 6 + level * 6 + (power - 1) * 4 + extra) * (web ? .75 : 1) * (guarded ? .8 : 1)));
+  const {atk,attackGrowth} = CLASSES[classId];
+  const extra = skill ? SKILLS[classId][0].bonus : 0;
+  return Math.max(1, Math.round((atk + bonus + 6 + level * attackGrowth + (power - 1) * 4 + extra) * (web ? .75 : 1) * (guarded ? .8 : 1)));
 }
 export function incomingDamage(amount, classId, guard) {
   return Math.max(1, Math.ceil(amount * (classId === 'knight' ? .85 : 1) * (guard ? .4 : 1)));
