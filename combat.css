@@ -1,5 +1,6 @@
 .skill-icon{width:42px;height:42px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;flex:none;padding:4px;background:#0a1523;border:1px solid #66736c;border-radius:3px}
 .skill-box strong{display:flex;align-items:center;gap:10px}
+.fighter.hit{animation:hit .4s ease-out!important}
 .tactics-panel{padding:14px;margin-bottom:18px;background:#211c23;border:1px solid #b77f54;border-left:3px solid #edb477}
 #enemyIntent{display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:#ffe2b6}#enemyIntent span{font-size:12px;color:#e5a6a3;margin-left:auto}.tactics-panel p,.tactics-panel small{font-size:12px;line-height:1.8;color:#cfbfb6;display:block}.tactics-panel small{margin-top:10px}#statusLine{font-size:12px;color:#f6c36d;margin:8px 0}
 .expedition-vitals{padding:12px 0;color:#ffd779}.expedition-vitals small{display:block;font-size:12px;color:#b8c7c5;margin:8px 0}
