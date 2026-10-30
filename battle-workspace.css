@@ -1,0 +1,51 @@
+/* One reading desk on the left, one command desk on the right. */
+.battle-workspace { grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); align-items:start; }
+.battle-briefing { display:grid; gap:18px; min-width:0; }
+.battle-workspace .lesson-panel,.battle-workspace .battle-intel { padding:19px; min-width:0; }
+.battle-workspace .lesson-panel h2,.battle-workspace .battle-intel h2 { font:700 17px/1.5 'Chakra Petch',sans-serif; margin:0; }
+.battle-workspace .panel-heading { gap:10px; margin-bottom:16px; }
+.battle-workspace .panel-heading .eyebrow { font-size:8px; white-space:nowrap; }
+.battle-workspace .mission-card { margin-bottom:12px; }
+.battle-workspace .lesson-line { margin-bottom:0; line-height:1.8; }
+.battle-workspace .code-panel { min-width:0; scroll-margin-top:18px; border-top:3px solid var(--mint); }
+.battle-workspace .combat-commands { margin:0 0 18px; padding:14px; }
+.battle-workspace .combat-commands > .eyebrow { display:block; font-size:9px; margin-bottom:12px; }
+.battle-workspace .command-row { gap:7px; }
+.battle-workspace .command-button { min-height:46px; }
+.battle-workspace .skill-choice { min-width:0; }
+.battle-workspace .skill-choice code { white-space:normal; }
+.battle-workspace .editor-bottom { flex-wrap:wrap; align-items:flex-start; }
+.battle-workspace .editor-bottom .action-hint { flex:1 1 210px; }
+.battle-workspace #runBtn { min-height:46px; }
+.battle-workspace .console { overflow-wrap:anywhere; scroll-margin:22px; }
+.battle-workspace .battle-controls { margin-top:16px; padding-top:16px; border-top:1px solid var(--line); gap:8px; }
+.battle-workspace .battle-controls .btn { min-height:42px; }
+.battle-workspace .tactics-panel { margin:0; }
+.combat-history { grid-column:1/-1; padding:0; min-width:0; align-self:start; }
+.combat-history > summary { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:18px 20px; min-height:62px; cursor:pointer; color:var(--text); font:600 16px/1.5 'Chakra Petch',sans-serif; list-style:none; }
+.combat-history > summary::-webkit-details-marker { display:none; }
+.combat-history > summary:hover { background:#9be8c20b; }
+.combat-history > summary:focus-visible { outline:3px solid var(--mint); outline-offset:3px; }
+.history-meta { display:flex; align-items:center; gap:16px; }
+.history-toggle-label { color:var(--muted); font-size:12px; }
+.history-chevron { color:var(--mint); font-size:24px; line-height:1; }
+.combat-history[open] .history-chevron { transform:rotate(180deg); }
+.combat-history[open] > summary { border-bottom:1px solid var(--line); }
+.combat-history .battle-log { height:auto; max-height:220px; margin:0; padding:16px 20px; gap:9px; }
+@media(max-width:980px) {
+  .battle-workspace { grid-template-columns:minmax(0,1fr); }
+  .battle-workspace .mission-card .goal-text { max-width:75ch; }
+}
+@media(max-width:600px) {
+  .battle-workspace .lesson-panel,.battle-workspace .battle-intel,.battle-workspace .code-panel { padding:16px 13px; }
+  .battle-workspace .panel-heading { align-items:flex-start; }
+  .battle-workspace .panel-heading h2 { font-size:16px; }
+  .battle-workspace .combat-commands { padding:11px; }
+  .battle-workspace .editor-bottom .action-hint { flex-basis:100%; }
+  .battle-workspace #runBtn { width:100%; }
+  .battle-workspace .battle-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .combat-history > summary { padding:15px 13px; font-size:15px; }
+  .history-meta { gap:9px; }
+  .history-toggle-label { display:none; }
+  .combat-history .battle-log { padding:14px 13px; }
+}
