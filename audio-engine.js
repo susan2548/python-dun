@@ -32,42 +32,42 @@ const TRACKS = {
   },
   floor0: {
     name: "ประตูหินโบราณ",
-    bpm: 84,
+    bpm: 140,
     root: 43,
     wave: "square",
     melody: [0, null, 3, 5, 7, null, 5, 3, 0, null, -2, 0, 3, null, 2, null],
   },
   floor1: {
     name: "กองกระดูกเดินทัพ",
-    bpm: 102,
+    bpm: 148,
     root: 38,
     wave: "square",
     melody: [0, 3, 7, 3, 0, 5, 8, 5, -2, 2, 5, 2, 0, 3, 2, null],
   },
   floor2: {
     name: "ใยพิษใต้สุสาน",
-    bpm: 88,
+    bpm: 144,
     root: 41,
     wave: "sawtooth",
     melody: [0, null, 1, 6, 5, null, 1, 0, 8, null, 6, 5, 1, null, -1, null],
   },
   floor3: {
     name: "เงาในถ้ำลึก",
-    bpm: 96,
+    bpm: 152,
     root: 36,
     wave: "triangle",
     melody: [0, 7, 6, 3, 0, 10, 7, 6, 3, 7, 6, 1, 0, 3, 1, null],
   },
   floor4: {
     name: "คัมภีร์แห่งเวท",
-    bpm: 112,
+    bpm: 156,
     root: 45,
     wave: "square",
     melody: [0, 4, 7, 11, 12, 11, 7, 4, 2, 5, 9, 12, 14, 12, 9, 5],
   },
   floor5: {
     name: "บัลลังก์เนโครแมนเซอร์",
-    bpm: 118,
+    bpm: 166,
     root: 33,
     wave: "sawtooth",
     melody: [0, 1, 6, 5, 0, 8, 6, 1, 0, -1, 5, 3, 0, 6, 5, 1],
@@ -82,6 +82,8 @@ let muted = true;
 let trackKey = "intro";
 let step = 0;
 let timer;
+let nextStepTime = 0;
+let noiseBuffer;
 
 function ensureAudio() {
   if (context) return context;
@@ -133,9 +135,74 @@ function percussion(when, strong = false) {
   source.start(when);
 }
 
+function battleDrum(when, kind, accent = 1) {
+  if (kind === 'kick') {
+    const osc = context.createOscillator(), gain = context.createGain();
+    osc.frequency.setValueAtTime(145, when);
+    osc.frequency.exponentialRampToValueAtTime(42, when + .13);
+    gain.gain.setValueAtTime(.23 * accent, when);
+    gain.gain.exponentialRampToValueAtTime(.0001, when + .22);
+    osc.connect(gain).connect(musicBus);
+    osc.start(when); osc.stop(when + .24);
+    return;
+  }
+  if (!noiseBuffer) {
+    noiseBuffer = context.createBuffer(1, context.sampleRate * .2, context.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  }
+  const noise = context.createBufferSource(), filter = context.createBiquadFilter(), gain = context.createGain();
+  noise.buffer = noiseBuffer;
+  filter.type = 'highpass'; filter.frequency.value = kind === 'snare' ? 1100 : 6500;
+  const duration = kind === 'snare' ? .14 : .035;
+  gain.gain.setValueAtTime((kind === 'snare' ? .11 : .035) * accent, when);
+  gain.gain.exponentialRampToValueAtTime(.0001, when + duration);
+  noise.connect(filter).connect(gain).connect(musicBus);
+  noise.start(when); noise.stop(when + duration);
+  if (kind === 'snare') note(50, when, .07, 'triangle', .06);
+}
+
+function scheduleBattle(track, when, seconds) {
+  const beat = step % 16, bar = Math.floor(step / 16);
+  const floor = Number(trackKey.slice(5));
+  // Minor-key four-bar phrases; boss adds the dissonant flattened second.
+  const progression = floor === 5 ? [0, 1, -4, -1] : [0, -3, -5, -2];
+  const root = track.root + progression[bar % 4];
+  const pulse = [0, 0, 12, 0, 7, 0, 12, 7];
+  note(root + pulse[step % 8], when, seconds * .82, 'sawtooth', .075);
+  // Driving low strings, alternating octaves and fifths.
+  if (beat % 2 === 0) {
+    note(root + 12, when, seconds * 1.6, 'sawtooth', .022);
+    note(root + 19, when + .006, seconds * 1.5, 'triangle', .035);
+  }
+  // Melody enters in call/answer phrases rather than a constant short loop.
+  if (beat % 2 === 0) {
+    const offset = track.melody[(Math.floor(step / 2) + Math.floor(bar / 4) * 4) % track.melody.length];
+    if (offset !== null) {
+      note(root + 24 + offset, when, seconds * (beat === 14 ? 2.3 : 1.3), track.wave, .035);
+      note(root + 24 + offset + 7, when + .012, seconds, 'triangle', .013);
+    }
+  }
+  if ([0, 6, 8, 10].includes(beat) || (bar % 4 === 3 && beat === 14)) battleDrum(when, 'kick');
+  if (beat === 4 || beat === 12 || (bar % 4 === 3 && beat === 15)) battleDrum(when, 'snare');
+  if (beat % 2 === 0 || floor >= 3) battleDrum(when, 'hat', beat % 4 === 0 ? 1 : .55);
+}
+
 function tick() {
   if (muted || !context) return;
   const track = TRACKS[trackKey] || TRACKS.map;
+  if (trackKey.startsWith('floor')) {
+    const seconds = 60 / track.bpm / 4;
+    // Audio-clock lookahead avoids rhythm jitter from browser timer delays.
+    if (nextStepTime < context.currentTime) nextStepTime = context.currentTime + .025;
+    while (nextStepTime < context.currentTime + .12) {
+      scheduleBattle(track, nextStepTime, seconds);
+      nextStepTime += seconds;
+      step++;
+    }
+    timer = setTimeout(tick, 25);
+    return;
+  }
   const seconds = 60 / track.bpm / 2;
   const when = context.currentTime + 0.025;
   const offset = track.melody[step % track.melody.length];
@@ -158,6 +225,16 @@ function tick() {
 function restartMusic() {
   clearTimeout(timer);
   step = 0;
+  // Fade out the previous phrase so changing rooms never overlaps two songs.
+  if (context) {
+    const previous = musicBus;
+    previous.gain.setTargetAtTime(.0001, context.currentTime, .04);
+    musicBus = context.createGain();
+    musicBus.gain.value = trackKey.startsWith('floor') ? .6 : .34;
+    musicBus.connect(master);
+    setTimeout(() => previous.disconnect(), 1600);
+    nextStepTime = context.currentTime + .05;
+  }
   if (!muted) tick();
 }
 

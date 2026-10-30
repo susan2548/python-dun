@@ -4,7 +4,8 @@ import {
   playSfx,
   setMuted,
   switchTrack,
-} from "./audio-engine.js?v=1";
+} from "./audio-engine.js?v=2";
+import { mountSpriteMotion } from "./sprite-motion.js?v=1";
 const LEVELS = [
   {
     name: "ประตูดันเจี้ยน",
@@ -385,6 +386,7 @@ function renderBattle(shouldScroll = true) {
     "beforeend",
     `<div class="fighter-shadow hero-shadow"></div><div class="fighter-shadow enemy-shadow"></div><div class="fx-layer" aria-hidden="true"></div><div class="music-chip">♫ ${currentTrackName()}</div><div class="combat-announcer" aria-live="polite"></div>`,
   );
+  mountSpriteMotion(["adventurer", "knight", "wizard"].indexOf(save.classId), l.sprite);
   $("#code").oninput = (e) => {
     battle.code = e.target.value; /* คำตอบไม่ถูกเก็บข้ามโจทย์ */
   };
@@ -405,7 +407,7 @@ function renderBattle(shouldScroll = true) {
   $("#runBtn").onclick = executeTurn;
   $("#toCode").onclick = () =>
     $(".code-panel").scrollIntoView({ behavior: "smooth", block: "start" });
-  $("#backMap").onclick = renderMap;
+  $("#backMap").onclick = () => battle.busy ? toast("รอจบเทิร์นนี้ก่อนครับ") : renderMap();
   $("#hintBtn").onclick = () => toast(task.hint);
   $("#resetCode").onclick = () => {
     battle.code = "";
@@ -515,13 +517,17 @@ function spawnBattleFx(kind, target = "enemy") {
   setTimeout(() => fx.remove(), 1100);
 }
 
-async function animateHeroAction(action) {
+async function animateHeroAction(action, impact) {
   const heroClass = save.classId;
   if (action.name === "attack") {
     announceCombat("⚔ โจมตี!");
     playSfx("attack");
+    const strike = animateFighter(".fighter.hero", "hero-attack", 520);
+    await wait(240);
     spawnBattleFx("slash", "enemy");
-    await animateFighter(".fighter.hero", "hero-attack", 520);
+    await wait(60);
+    impact();
+    await strike;
     return;
   }
   announceCombat(`✦ ${CLASSES[heroClass].skillName}!`);
@@ -537,19 +543,25 @@ async function animateHeroAction(action) {
         : "double-slash",
     "enemy",
   );
+  await wait(heroClass === "wizard" ? 560 : 180);
+  impact();
   await cast;
 }
 
-async function animateEnemyAction(move) {
+async function animateEnemyAction(move, impact) {
   announceCombat(`☠ ${move}`);
   playSfx(move === "โจมตี" ? "enemy" : "skill");
-  if (move !== "โจมตี") spawnBattleFx("enemy-skill", "hero");
-  else spawnBattleFx("claw", "hero");
-  await animateFighter(
+  const strike = animateFighter(
     ".fighter.enemy",
     move === "โจมตี" ? "enemy-attack" : "enemy-cast",
     580,
   );
+  await wait(270);
+  if (move !== "โจมตี") spawnBattleFx("enemy-skill", "hero");
+  else spawnBattleFx("claw", "hero");
+  await wait(70);
+  impact();
+  await strike;
 }
 
 function flash(target) {
@@ -576,20 +588,20 @@ async function applyAction(a) {
   const c = CLASSES[save.classId],
     p = a.power,
     base = c.atk + save.attackBonus + 6 + battle.level * 6 + (p - 1) * 4;
-  await animateHeroAction(a);
-  if (a.name === "attack") {
-    damageEnemy(base, "โจมตี");
-    return;
-  }
-  const cost = c.skill === "fireball" ? 6 : 5;
-  battle.mp -= cost;
-  if (c.skill === "double_strike") damageEnemy(base + 10, "ฟันสองจังหวะ");
-  if (c.skill === "shield_bash") {
-    damageEnemy(base + 7, "กระแทกโล่");
-    battle.guard = true;
-    log("ยกโล่ป้องกันการโจมตีถัดไป");
-  }
-  if (c.skill === "fireball") damageEnemy(base + 13, "ลูกไฟเวท");
+  await animateHeroAction(a, () => {
+    if (a.name === "attack") damageEnemy(base, "โจมตี");
+    else {
+      battle.mp -= c.skill === "fireball" ? 6 : 5;
+      if (c.skill === "double_strike") damageEnemy(base + 10, "ฟันสองจังหวะ");
+      if (c.skill === "shield_bash") {
+        damageEnemy(base + 7, "กระแทกโล่");
+        battle.guard = true;
+        log("ยกโล่ป้องกันการโจมตีถัดไป");
+      }
+      if (c.skill === "fireball") damageEnemy(base + 13, "ลูกไฟเวท");
+    }
+    updateCombat();
+  });
 }
 async function enemyTurn() {
   const l = LEVELS[battle.level];
@@ -645,11 +657,13 @@ async function enemyTurn() {
     amount = Math.ceil(amount * 0.4);
     battle.guard = false;
   }
-  await animateEnemyAction(move);
-  battle.hp = Math.max(0, battle.hp - amount);
-  log(`${l.enemy} ใช้ ${move} คุณโดน ${amount} HP`);
-  flash(".fighter.hero");
-  playSfx("hurt");
+  await animateEnemyAction(move, () => {
+    battle.hp = Math.max(0, battle.hp - amount);
+    log(`${l.enemy} ใช้ ${move} คุณโดน ${amount} HP`);
+    flash(".fighter.hero");
+    playSfx("hurt");
+    updateCombat();
+  });
 }
 async function executeTurn() {
   if (!battle || battle.busy || battle.finished) return;
@@ -703,11 +717,30 @@ async function executeTurn() {
   }
   btn.textContent =
     action.name === "skill" ? "✦ กำลังร่ายสกิล…" : "⚔ กำลังโจมตี…";
+  // Dismiss the mobile keyboard and frame the stage BEFORE starting the action.
+  $("#code").blur();
+  const scene = $("#scene");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  scene.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "center" });
+  // Wait for scrolling to settle, including slow browser smooth-scroll curves.
+  const scrollStarted = performance.now();
+  let lastScroll = window.scrollY, stable = 0;
+  while (performance.now() - scrollStarted < 1400) {
+    await wait(50);
+    if (screen !== "battle" || battle !== current) return;
+    stable = Math.abs(window.scrollY - lastScroll) < 1 ? stable + 1 : 0;
+    lastScroll = window.scrollY;
+    if (stable >= 3 && performance.now() - scrollStarted > 350) break;
+  }
+  if (screen !== "battle" || battle !== current) return;
+  announceCombat("คำตอบถูกต้อง • เตรียมโจมตี!");
+  await wait(400);
   await applyAction(action);
   log(
     `ผ่านโจทย์ ${battle.phase + 1}/3: ${CHALLENGES[battle.level][battle.phase].prompt}`,
   );
   updateCombat();
+  await wait(450);
   if (battle.phase === 2) {
     battle.enemyHp = 0;
     battle.finished = true;
@@ -721,6 +754,7 @@ async function executeTurn() {
   btn.textContent = "☠ ศัตรูกำลังโจมตี…";
   await enemyTurn();
   updateCombat();
+  await wait(850);
   if (battle.hp <= 0) {
     battle.finished = true;
     battle.busy = false;
@@ -779,7 +813,10 @@ function defeat() {
     renderMap();
   };
 }
-$("#homeBtn").onclick = () => (save.classId ? renderMap() : renderIntro());
+$("#homeBtn").onclick = () => {
+  if (screen === "battle" && battle?.busy) return toast("รอจบเทิร์นนี้ก่อนครับ");
+  save.classId ? renderMap() : renderIntro();
+};
 $("#soundBtn").onclick = async () => {
   muted = !muted;
   await setMuted(muted);
