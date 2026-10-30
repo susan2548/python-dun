@@ -68,6 +68,8 @@ Square dungeon panels and pixel clusters. Editor helper buttons use a small 3px 
 | Scrollbar | editor.css global baseline | Visible native scrollbar on input; paint/gutter are inert synced mirrors |
 | Toast / modal | game.js existing toast/showModal | Shared status messages, modal focus and Escape behaviour retained |
 | Expedition map | expedition-map.js + expedition-map.css | Read-only room inspection, explicit entry confirmation button, locked/replay/resume states; existing game.js owns starting a battle |
+| Lesson and objective | game.js + learning-ui.css | Separate 22px Thai lesson heading; gold objective card precedes action choices, 21px prompt, explicit scroll/focus button to the blank editor; 19px text on phones |
+| Status details | status-inspector.js + learning-ui.css | Both actors use real icon buttons. Hover/keyboard focus explains effects; click/tap pins a nonmodal panel with close/Escape/outside dismissal. Body-level positioning avoids scene clipping. Viewing never spends a turn. |
 
 Inputs remain blank at new lessons. Toolbar inserts syntax and exact skill names, leaving the power expression empty. Guard is a mode choice with a separate one-turn confirmation, never fake Python. Busy state locks editing and helper buttons; validation errors keep code for correction. Thai is the UI language, Python API words remain English.
 
@@ -83,3 +85,4 @@ Atlases contain authored joint/weapon poses at one shared scale with reviewed st
 - Show the combat scene before an action starts; retain all lesson validation.
 - Do not restore HP/MP on scene changes or allow animation timing to duplicate damage.
 - Do not fill completed exercise answers through helper buttons.
+- Status details show the actor, buff/debuff type, actual DOT damage, remaining owner turns and expiry rule. Re-rendering badges closes old details so expired effects cannot remain visible.
