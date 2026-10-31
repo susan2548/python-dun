@@ -1,0 +1,9 @@
+.turn-banner{--turn-accent:#9be8c2;position:absolute;z-index:24;top:54%;left:0;right:0;transform:translateY(-50%);display:grid;justify-items:center;gap:8px;padding:15px 12px;background:linear-gradient(90deg,#071019dc,#10242df5 25%,#10242df5 75%,#071019dc);border-block:2px solid var(--turn-accent);box-shadow:0 5px 0 #02090caa,0 -5px 0 #02090c66;pointer-events:none;animation:turn-arrival .16s steps(4,end);color:#edf2df;text-shadow:0 2px #061014}
+.turn-banner:before,.turn-banner:after{content:'';position:absolute;top:50%;width:16px;height:16px;border:2px solid var(--turn-accent);transform:translateY(-50%) rotate(45deg);left:9%;box-shadow:5px -5px #071019}
+.turn-banner:after{left:auto;right:9%}.turn-enemy{--turn-accent:#eb817c;background:linear-gradient(90deg,#130e17dc,#291a25f5 25%,#291a25f5 75%,#130e17dc)}
+.turn-banner strong{font:clamp(16px,2.2vw,27px)/1.4 'Press Start 2P',monospace;color:var(--turn-accent)}
+.turn-banner span{font:600 clamp(12px,1.4vw,16px)/1.35 'Chakra Petch',sans-serif}.turn-banner small{font:10px/1.2 'Press Start 2P',monospace;letter-spacing:.05em;color:#c8d7d3}
+.question-topic{display:block;color:#b7e7d7;font-size:13px;margin:0 0 10px}.question-deck-note{color:#a5bfbb;font-size:12px;line-height:1.7;margin:6px 0 12px}
+@keyframes turn-arrival{from{translate:0 7px}to{translate:0 0}}
+@media(max-width:600px){.turn-banner{top:56%;gap:6px;padding:12px 8px}.turn-banner:before,.turn-banner:after{width:9px;height:9px;left:5%}.turn-banner:after{left:auto;right:5%}.turn-banner strong{font-size:16px}.turn-banner span{font-size:12px}.turn-banner small{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.turn-banner{animation:none}}

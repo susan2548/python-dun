@@ -1,4 +1,10 @@
-PYTHON DUNGEON - recorded combat audio v1.14
+PYTHON DUNGEON - recorded combat audio v1.15
+
+v1.15 adds 24 previously unused source recordings for slime, mimic, scarab,
+bat, ice wolf and clockwork sentinel. Normal and special moves have separate
+vocal/effect takes. Sources: rubberduck's 80 CC0 Creature SFX / RPG SFX and
+Kenney Impact Sounds, all CC0 1.0. Full source file/hash/processing records
+are in manifest.json. There are 86 clips in the current bank.
 
 Character voices (human performance): John Carroll
 Warrior Voice Pack: https://johncarroll.itch.io/warrior-voice-pack

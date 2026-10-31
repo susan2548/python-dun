@@ -1,5 +1,5 @@
-import {motionProfile,phaseAt,motionOffset} from './animation-profiles.js?v=1';
-import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=2';
+import {motionProfile,phaseAt,motionOffset} from './animation-profiles.js?v=2';
+import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=3';
 const ICONS = { attack:'S_Sword01.png', double_strike:'S_Dagger02.png', smoke_blade:'S_Shadow04.png', iron_oath:'shield.svg', frost_lance:'S_Ice03.png', shield_bash:'shield.svg', fireball:'S_Fire03.png', poison:'S_Poison02.png', web:'S_Poison07.png', curse:'S_Shadow03.png', stone:'S_Earth03.png', mana:'P_Blue01.png', shield:'shield.svg', health:'P_Red01.png', armor:'A_Armour01.png', focus:'S_Buff01.png', blind:'S_Shadow04.png', frost:'S_Ice03.png', bleed:'bleed.svg', inn:'inn.svg', hint:'I_Book.png' };
 export function skillIcon(key) {
   return `<img class="skill-icon" src="./assets/icons/${ICONS[key] || ICONS.attack}" alt="" aria-hidden="true">`;
@@ -65,11 +65,13 @@ export async function playCombatMotion(role,variant,impact,{hit:landed=true}={})
   const distance=ranged||reduced?0:Math.max(0,Math.abs(a.left+a.width/2-b.left-b.width/2)-a.width*.36-b.width*.13)*direction;
   const origin={x:a.left+a.width*(role==='hero'?.72:.29)-box.left,y:a.top+a.height*.57-box.top};
   const dest={x:b.left+b.width*.50-box.left,y:b.top+b.height*.69-box.top};
-  const theme=variant==='fireball'?'fire':variant==='frost_lance'?'frost':variant==='poison'?'poison':variant==='web'?'web':variant==='iron_oath'?'gold':role==='enemy'?'dark':'arcane';
+  const newThemes={'acid-fountain':'acid','coin-storm':'coin',sandstorm:'sand','sonic-cry':'sonic','frost-breath':'frost','core-laser':'core'};
+  const theme=newThemes[variant]||(variant==='fireball'?'fire':variant==='frost_lance'?'frost':variant==='poison'?'poison':variant==='web'?'web':variant==='iron_oath'?'gold':role==='enemy'?'dark':'arcane');
   const nodes=[],animations=[];
   const add=(name,x,y)=>{const n=effect(scene,name,x,y);nodes.push(n);return n;};
   const animate=(n,keys,options)=>{const a=n.animate(keys,options);animations.push(a);return a;};
-  fighter.dataset.motion=ranged?'cast':role==='enemy'&&variant!=='attack'?'technique':'attack';
+  const normalAttack=['attack','magic-bolt','acid-lunge','chest-bite','mandible-ram','wing-dive','ice-pounce','gear-slash'].includes(variant);
+  fighter.dataset.motion=ranged?'cast':role==='enemy'&&!normalAttack?'technique':'attack';
   fighter.dataset.variant=variant;fighter.dataset.progress='0';fighter.style.zIndex='5';
   const audioOptions={role,targetKind:target.dataset.kind,guarded:target.dataset.stance==='guard'};
   combatCue(kind,variant,'windup',audioOptions);
@@ -93,7 +95,14 @@ export async function playCombatMotion(role,variant,impact,{hit:landed=true}={})
       if(!reduced){
         let offset=motionOffset(p,distance,heavy);
         if(double&&p>.43&&p<.62)offset=distance-direction*18*Math.sin((p-.43)/.19*Math.PI);
-        fighter.style.transform=`translateX(${Math.round(offset)}px)`;
+        let lift=0,tilt=0;const air=Math.sin(Math.max(0,Math.min(1,(p-.20)/.52))*Math.PI);
+        if(profile.path==='hop')lift=-30*air;
+        if(profile.path==='dive'){lift=-58*air;tilt=-13*air;}
+        if(profile.path==='pounce')lift=-39*air;
+        if(profile.path==='ram'){lift=-4*air;tilt=3*air;}
+        if(profile.path==='gear'){lift=-10*air;tilt=7*air;}
+        if(profile.path==='surge')lift=5*air;
+        fighter.style.transform=`translate(${Math.round(offset)}px,${Math.round(lift)}px) rotate(${tilt.toFixed(1)}deg)`;
         if(variant==='smoke_blade')fighter.style.opacity=p>.25&&p<.38?'.35':'1';
         if(charge){const growth=Math.min(1,p/.40);charge.style.opacity=p<profile.release?String(growth):'0';charge.style.transform=`rotate(${Math.round(p*240)}deg) scale(${.25+growth*.8})`;}
         if(projectile&&p>=profile.release){

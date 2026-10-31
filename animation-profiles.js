@@ -1,9 +1,10 @@
 // Pure timing contract shared by the sprite renderer and combat clock.
 export const HERO_KINDS=['adventurer','knight','wizard'];
 export const MONSTER_KINDS=['zombie','skeleton','spider','wraith','golem','necromancer'];
-const periods={adventurer:2400,knight:3200,wizard:3000,zombie:2900,skeleton:2800,spider:1900,wraith:3400,golem:4200,necromancer:3100};
+export const NEW_MONSTER_KINDS=['slime','mimic','scarab','bat','icewolf','sentinel'];
+const periods={adventurer:2400,knight:3200,wizard:3000,zombie:2900,skeleton:2800,spider:1900,wraith:3400,golem:4200,necromancer:3100,slime:2200,mimic:3100,scarab:2600,bat:850,icewolf:2800,sentinel:3500};
 export function idleFrame(kind,time) {
-  const p=(Math.max(0,time)%periods[kind])/periods[kind];
+  const period=periods[kind]||2600,p=(Math.max(0,time)%period)/period;
   return p<.26?0:p<.42?1:p<.58?2:p<.74?3:p<.88?2:1;
 }
 export function poseFrame(kind,motion,p,time=0,variant='') {
@@ -19,6 +20,15 @@ export function poseFrame(kind,motion,p,time=0,variant='') {
   return p<.22?4:p<.36?5:p<.60?6:p<.92?7:0;
 }
 export function motionProfile(kind,variant) {
+  const unique={
+   'acid-lunge':{duration:1230,contact:.48,release:.32,path:'surge'},'acid-fountain':{ranged:true,duration:1580,contact:.72,release:.46},
+   'chest-bite':{duration:1380,contact:.53,release:.33,path:'hop'},'coin-storm':{ranged:true,duration:1710,contact:.73,release:.43},
+   'mandible-ram':{duration:1190,contact:.48,release:.28,path:'ram'},sandstorm:{ranged:true,duration:1640,contact:.72,release:.45},
+   'wing-dive':{duration:1050,contact:.46,release:.27,path:'dive'},'sonic-cry':{ranged:true,duration:1490,contact:.70,release:.40},
+   'ice-pounce':{duration:1140,contact:.47,release:.29,path:'pounce'},'frost-breath':{ranged:true,duration:1670,contact:.74,release:.46},
+   'gear-slash':{duration:1420,contact:.51,release:.34,path:'gear'},'core-laser':{ranged:true,duration:1810,contact:.76,release:.49},
+  }[variant];
+  if(unique)return {ranged:false,hitStop:kind==='sentinel'?80:55,...unique};
   const heavy=kind==='knight'||kind==='golem';
   const ranged=['magic-bolt','fireball','frost_lance','iron_oath','web','curse'].includes(variant);
   return {ranged,duration:ranged?1480:variant==='double_strike'?1420:heavy?1260:kind==='spider'?980:1100,contact:ranged?.70:variant==='double_strike'?.62:.43,release:ranged?.44:.32,hitStop:heavy?85:ranged?45:65};

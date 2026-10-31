@@ -20,9 +20,10 @@ advanceCooldowns(b);assert.equal(b.cooldowns.double_strike,1);advanceCooldowns(b
 assert.equal(SKILLS.wizard[0].id,'fireball');assert.equal(SKILLS.wizard[0].cd,0);
 assert(SKILLS.adventurer.every(s=>s.cd>0));assert(SKILLS.knight.every(s=>s.cd>0));
 assert(SKILLS.wizard[0].chance>0&&SKILLS.wizard[0].chance<1);
-assert.equal(statusChance(SKILLS.adventurer[0],1),0,'Skeletons cannot bleed');
-assert.equal(statusChance(SKILLS.adventurer[0],4),0,'Stone cannot bleed');
-assert(statusChance(SKILLS.wizard[0],4)<statusChance(SKILLS.wizard[0],0));
+assert.equal(statusChance(SKILLS.adventurer[0],5),0,'Skeletons cannot bleed');
+assert.equal(statusChance(SKILLS.adventurer[0],9),0,'Stone cannot bleed');
+assert.equal(statusChance(SKILLS.adventurer[0],10),0,'Machines cannot bleed');
+assert(statusChance(SKILLS.wizard[0],9)<statusChance(SKILLS.wizard[0],0));
 assert.equal(heroDamage(20,{},true),26);assert.equal(heroDamage(20,{web:{turns:1}},false),15);
 addStatus(b.heroStatuses,'focused',1);assert.equal(consumeFocus(b.heroStatuses,'attack'),true);assert(!b.heroStatuses.focused);
 addStatus(b.heroStatuses,'focused',1);assert.equal(consumeFocus(b.heroStatuses,'guard'),false);assert(!b.heroStatuses.focused,'Guard consumes the next-turn focus window');

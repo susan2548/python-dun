@@ -15,8 +15,14 @@ export const ACTOR_VOICES={
  adventurer:['double_strike','smoke_blade','attack_adventurer','guard_adventurer','focus_adventurer'],knight:['shield_bash','iron_oath','attack_knight','guard_knight','focus_knight'],wizard:['fireball','frost_lance','attack_wizard','guard_wizard','focus_wizard'],
  zombie:['zombie_bite','attack_zombie'],skeleton:['skeleton_shield','skeleton_cleave','attack_skeleton'],spider:['spider_web','attack_spider'],wraith:['wraith_drain','attack_wraith'],golem:['golem_guard','golem_quake','attack_golem'],necromancer:['necro_drain','necro_curse','attack_necromancer'],
 };
+export const NEW_MONSTER_AUDIO={slime:['acid-lunge','acid-fountain','เมือกกัดกร่อน'],mimic:['chest-bite','coin-storm','เหรียญลวงตา'],scarab:['mandible-ram','sandstorm','พายุทรายทอง'],bat:['wing-dive','sonic-cry','คลื่นเสียงกรีดวิญญาณ'],icewolf:['ice-pounce','frost-breath','ลมหายใจเยือกแข็ง'],sentinel:['gear-slash','core-laser','ลำแสงแกนกลาง']};
+for(const [kind,[,,caption]] of Object.entries(NEW_MONSTER_AUDIO)){
+ VOICE_BANK['attack_'+kind]={pool:[`v15-vo-${kind}-0`],gain:.49};
+ VOICE_BANK[kind+'_skill']={pool:[`v15-vo-${kind}-1`],caption,gain:.67};
+ ACTOR_VOICES[kind]=['attack_'+kind,kind+'_skill'];
+}
 export const FX_POOLS={light:['blade-1','blade-3','blade-5'],heavy:['blade-7','blade-9'],steel:['steel-1','steel-3','steel-7'],body:['thud-1','thud-2'],stone:['stone-1','stone-2'],bone:['bone-1','bone-2'],venom:['venom-1','venom-2'],web:['web-1','web-2']};
-export const FX_FILES=[...new Set([...Object.values(FX_POOLS).flat(),'charge','arcane','fire-charge','fire-flight','fire-impact','frost-impact','wind','ward','restore','dark','draw'])];
+export const FX_FILES=[...new Set([...Object.values(FX_POOLS).flat(),...Object.keys(NEW_MONSTER_AUDIO).flatMap(k=>[`v15-fx-${k}-0`,`v15-fx-${k}-1`]),'charge','arcane','fire-charge','fire-flight','fire-impact','frost-impact','wind','ward','restore','dark','draw'])];
 const layer=(pool,gain,rate=1,spread=.025)=>({pool:Array.isArray(pool)?pool:[pool],gain,rate,spread});
 function materialHit(target,guarded){
  if(guarded||target==='knight')return [layer(FX_POOLS.steel,.38),layer(FX_POOLS.body,.12)];
@@ -26,6 +32,14 @@ function materialHit(target,guarded){
  return [layer(FX_POOLS.body,.35),layer(FX_POOLS.light,.14,1.13)];
 }
 export function soundPlan(kind,variant,stage,{targetKind='',guarded=false}={}){
+ const unique=NEW_MONSTER_AUDIO[kind];
+ if(unique&&unique.includes(variant)){
+  const special=variant===unique[1],file=`v15-fx-${kind}-${special?1:0}`;
+  if(stage==='windup')return [layer(file,.15,1,0)];
+  if(stage==='release')return [layer(file,.32,1,0)];
+  if(stage==='hit')return [layer(file,.34,1,0),layer(FX_POOLS.body,.10,1,0)];
+  if(stage==='miss')return [layer(`v15-fx-${kind}-0`,.22,1,0)];
+ }
  const heavy=kind==='knight'||kind==='golem',blade=['attack','double_strike','smoke_blade','shield_bash','shield'].includes(variant)&&['adventurer','knight','skeleton'].includes(kind);
  if(stage==='cutin')return [layer(kind==='wizard'?'charge':'wind',.20,kind==='knight'?.83:1)];
  if(stage==='miss')return [layer(blade?FX_POOLS.light:'wind',.24,heavy?.90:1.05)];

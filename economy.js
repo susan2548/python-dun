@@ -1,4 +1,4 @@
-import {POTION_HP,POTION_MP} from './tactical-engine.js?v=3';
+import {POTION_HP,POTION_MP} from './tactical-engine.js?v=4';
 export const GOODS=[
   {id:'potion',name:'ยาฟื้นพลัง',icon:'health',price:25,description:`ฟื้น ${POTION_HP} HP • ใช้หนึ่งเทิร์น • ตั้งรับลดดาเมจสวน 60%`,speech:`ขวดแดงฟื้น ${POTION_HP} HP เจ้าจะตั้งรับลดดาเมจสวน 60% ขณะดื่ม แต่ศัตรูยังโจมตีและสถานะยังเดินเวลา ถ้าเพิ่งจบชั้น แวะโรงแรมจะคุ้มกว่า`,stock:3},
   {id:'mana',name:'ยามานา',icon:'mana',price:18,description:`ฟื้น ${POTION_MP} MP • ใช้หนึ่งเทิร์น • ตั้งรับลดดาเมจสวน 60%`,speech:`ขวดฟ้าฟื้นแค่ ${POTION_MP} MP จงเลือกคาถาให้ดี ถ้ายังไม่อันตราย ลอง Focus เพื่อเก็บมานาทีละหนึ่ง`,stock:3},

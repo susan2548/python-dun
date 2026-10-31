@@ -1,4 +1,5 @@
 // Turn rules have no DOM or audio dependencies. RNG state is part of the save.
+import {LEVELS} from './campaign.js?v=1';
 export const SKILLS = {
   adventurer: [
     {id:'double_strike',name:'ฟันสองจังหวะ',mp:3,cd:2,bonus:15,status:'bleed',chance:.45,turns:2,power:4,icon:'double_strike',description:'ฟันแรงขึ้น • เลือดไหล 45% นาน 2 เทิร์น (โครงกระดูก/โกเลมต้านทาน)'},
@@ -55,8 +56,8 @@ export function addStatus(statuses,id,turns,power=0) {
   statuses[id]={turns:Math.max(turns,statuses[id]?.turns||0),power};
 }
 export function statusChance(skill,level) {
-  if(skill.status==='bleed' && [1,4].includes(level)) return 0;
-  if(skill.status==='burn' && level===4) return skill.chance*.6;
+  if(skill.status==='bleed' && LEVELS[level]?.bleedImmune) return 0;
+  if(skill.status==='burn') return (skill.chance||0)*(LEVELS[level]?.burnResistance??1);
   return skill.chance||0;
 }
 export function attemptStatus(b,statuses,id,turns,power,probability) {

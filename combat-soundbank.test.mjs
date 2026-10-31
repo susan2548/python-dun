@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {VOICE_BANK,ACTOR_VOICES,FX_FILES,soundPlan,pickTake} from './combat-soundbank.js';
+import {VOICE_BANK,ACTOR_VOICES,FX_FILES,NEW_MONSTER_AUDIO,soundPlan,pickTake} from './combat-soundbank.js';
 const manifest=JSON.parse(fs.readFileSync(new URL('./assets/audio-v14/manifest.json',import.meta.url)));
 const {clips,sources}=manifest;
-assert.equal(Object.keys(clips).length,62);
+assert.equal(Object.keys(clips).length,86);
 for(const [id,c]of Object.entries(clips)){
  assert.equal(c.syntheticSpeech,false,id);assert.ok(c.peak>0&&c.peak<.98,id+' headroom');assert.ok(c.seconds>.05&&c.seconds<=2.15,id+' duration');
  assert.ok(fs.statSync(new URL('./assets/audio-v14/'+c.file,import.meta.url)).size>1000,id);assert.ok(sources[c.pack].url.startsWith('https://'));assert.match(c.sourceSha256,/^[a-f0-9]{64}$/);
@@ -13,6 +13,14 @@ for(const [key,v]of Object.entries(VOICE_BANK)){
  assert.ok(!JSON.stringify(v).includes('Watch my blade'));
 }
 for(const [kind,keys]of Object.entries(ACTOR_VOICES)){assert.ok(keys.includes('attack_'+kind));for(const key of keys)assert.ok(VOICE_BANK[key],kind+'/'+key);}
+const originalHashes=new Set(Object.entries(clips).filter(([id])=>!id.startsWith('v15-')).map(([,c])=>c.sourceSha256));
+const newHashes=[];
+for(const [kind,[normal,special]] of Object.entries(NEW_MONSTER_AUDIO)){
+ for(const variant of [normal,special])for(const stage of ['windup','release','hit','miss'])for(const layer of soundPlan(kind,variant,stage))for(const id of layer.pool)assert(clips[id],id);
+ for(const type of ['vo','fx'])for(let n=0;n<2;n++){const c=clips[`v15-${type}-${kind}-${n}`];assert(!originalHashes.has(c.sourceSha256));newHashes.push(c.sourceSha256);}
+ assert.notDeepEqual(soundPlan(kind,normal,'release'),soundPlan(kind,special,'release'));
+}
+assert.equal(new Set(newHashes).size,24,'New monsters need distinct recorded takes');
 const skillIds=['double_strike','smoke_blade','shield_bash','iron_oath','fireball','frost_lance'];
 assert.equal(new Set(skillIds.flatMap(k=>VOICE_BANK[k].pool)).size,skillIds.flatMap(k=>VOICE_BANK[k].pool).length,'skills need distinct voice takes');
 for(const kind of Object.keys(ACTOR_VOICES))for(const variant of ['attack','magic-bolt','guard','focus',...skillIds,'shield','poison','web','curse','stone'])for(const stage of ['windup','release','hit','miss','cutin']){
@@ -26,4 +34,4 @@ assert.notDeepEqual(soundPlan('wizard','fireball','hit'),soundPlan('wizard','fro
 assert.notDeepEqual(soundPlan('wizard','fireball','miss'),soundPlan('wizard','fireball','hit'));
 let previous;for(let i=0;i<100;i++){const next=pickTake(['a','b','c'],previous,()=>i/100);assert.notEqual(next,previous);previous=next;}
 assert.equal(pickTake(['only'],'only'),'only');
-console.log('Recorded combat audio passed: 62 files, 9 actors, distinct skill voices, hit materials, misses, no immediate repeats, bounded mix and decoded headroom.');
+console.log('Recorded combat audio passed: 86 files, 15 actors, 24 unused source takes for new monsters, distinct skills and bounded decoded headroom.');

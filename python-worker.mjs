@@ -1,23 +1,28 @@
 import { loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.mjs';
-import { SKILLS, skillAliasMap } from './tactical-engine.js';
+import { SKILLS, skillAliasMap } from './tactical-engine.js?v=4';
 
 let runtime;
 const ready = () => runtime ??= loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/'});
+let checkerSource;
+const checker = () => checkerSource ??= fetch(new URL('./question-validator.py?v=1',import.meta.url)).then(r=>{if(!r.ok)throw Error('โหลดตัวตรวจโจทย์ไม่สำเร็จ');return r.text();}).catch(error=>{checkerSource=null;throw error;});
 
 self.onmessage = async ({data}) => {
-  const {id, code, challenge, skillName, rune = ''} = data;
+  const {id, code, challenge, skillName, rune = '', question = null} = data;
   const actions = [], logs = [];
+  let checkingUser=false;
   try {
-    const py = await ready();
+    const [py,source] = await Promise.all([ready(),question?.kind?checker():null]);
     py.globals.set('user_code', code);
-    py.globals.set('challenge_number', challenge);
+    py.globals.set('challenge_number', question?.legacyChallenge ?? challenge);
+    py.globals.set('question_check_json', JSON.stringify(question));
     py.globals.set('allowed_skill', skillName);
     py.globals.set('skill_alias_json', JSON.stringify(skillAliasMap()));
     py.globals.set('skill_display_name', Object.values(SKILLS).flat().find(s=>s.id===skillName)?.name||skillName);
     py.globals.set('emit_action', (name, value, power) => actions.push({name:String(name), value:String(value), power:Number(power)}));
     py.globals.set('emit_log', line => {if(logs.length < 8) logs.push(String(line));});
+    checkingUser=true;
     await py.runPythonAsync(`
-import ast, json
+import ast, json, sys
 skill_aliases = json.loads(skill_alias_json)
 tree = ast.parse(user_code)
 nodes = list(ast.walk(tree))
@@ -51,13 +56,30 @@ def skill(name, value):
         raise ValueError('สกิลที่เลือกใช้ skill("' + skill_display_name + '", พลัง) กดปุ่มสกิลใต้ช่องเขียนเพื่อใส่ชื่อได้')
     emit_action('skill', canonical, power(value))
 scope = {'__builtins__':__builtins__, 'print':print, 'attack':attack, 'skill':skill}
-exec(compile(tree, '<player>', 'exec'), scope)
+executed_lines = set()
+execution_steps = 0
+def track_player(frame, event, arg):
+    global execution_steps
+    if event == 'line' and frame.f_code.co_filename == '<player>':
+        execution_steps += 1
+        if execution_steps > 10000:
+            raise ValueError('ลูปทำงานเกินขอบเขต ลองตรวจเงื่อนไขหยุดหรือการเพิ่มลดตัวแปร')
+        executed_lines.add(frame.f_lineno)
+    return track_player
+sys.settrace(track_player)
+try:
+    exec(compile(tree, '<player>', 'exec'), scope)
+finally:
+    sys.settrace(None)
 `);
     py.globals.set('action_count', actions.length);
     py.globals.set('action_power', actions[0]?.power ?? 0);
     py.globals.set('output_json', JSON.stringify(logs));
     py.globals.set('required_rune', rune);
-    await py.runPythonAsync(`
+    if(question?.kind){
+      await py.runPythonAsync(source);
+      await py.runPythonAsync('validate_question(json.loads(question_check_json), user_code, scope, json.loads(output_json), action_power, action_count, required_rune, executed_lines)');
+    }else await py.runPythonAsync(`
 import json
 output_lines = json.loads(output_json)
 if required_rune:
@@ -107,6 +129,6 @@ else: raise ValueError('ไม่พบโจทย์')
     const raw = String(error?.message || error);
     const marker = ['ValueError:', 'SyntaxError:', 'IndentationError:', 'NameError:', 'TypeError:'].find(x => raw.includes(x));
     const detail = marker ? `${marker === 'ValueError:' ? '' : marker+' '}${raw.split(marker).at(-1).split('\n')[0].trim()}` : raw.split('\n').filter(Boolean).at(-1);
-    self.postMessage({id, ok:false, error:detail || 'ตรวจโค้ดไม่สำเร็จ'});
+    self.postMessage({id, ok:false, technical:!checkingUser, error:detail || 'ตรวจโค้ดไม่สำเร็จ'});
   }
 };

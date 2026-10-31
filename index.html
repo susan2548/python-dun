@@ -23,6 +23,9 @@
     <link rel="stylesheet" href="./learning-ui.css?v=2" />
     <link rel="stylesheet" href="./battle-workspace.css?v=2" />
     <link rel="stylesheet" href="./combat-polish.css?v=2" />
+    <link rel="stylesheet" href="./turn-flow.css?v=1" />
+    <link rel="stylesheet" href="./campaign.css?v=1" />
+    <link rel="stylesheet" href="./monster-effects.css?v=1" />
   </head>
   <body>
     <div class="app-shell">
@@ -33,7 +36,7 @@
         </button>
         <div class="topbar-right">
           <span id="chapterTag" class="chapter-tag">CODE • CONQUER • LEARN</span
-          ><span id="wallet" class="wallet">✦ 0</span
+          ><span id="wallet" class="wallet" title="เหรียญทอง • ใช้ซื้อของและพักโรงแรม"><img class="coin-icon" src="./assets/icons/coin.svg" alt=""> 0 เหรียญ</span
           ><button
             id="soundBtn"
             class="icon-btn"
@@ -47,12 +50,12 @@
       </header>
       <main id="app" aria-live="polite"></main>
       <footer class="footer">
-        <span>PYTHON DUNGEON <em>v1.14</em></span
+        <span>PYTHON DUNGEON <em>v1.15</em></span
         ><span>เขียนโค้ดจริง • เรียนรู้ทีละชั้น • พิชิตบอส</span>
         <a href="./assets/audio-v14/CREDITS.txt" target="_blank" rel="noopener">เครดิตเสียง</a>
       </footer>
     </div>
     <div id="toast" class="toast" role="status"></div>
-    <script type="module" src="./game.js?v=14"></script>
+    <script type="module" src="./game.js?v=15"></script>
   </body>
 </html>

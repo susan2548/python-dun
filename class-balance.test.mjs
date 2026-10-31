@@ -5,7 +5,7 @@ import {SKILLS,heroDamage,enemyDamage} from './tactical-engine.js';
 import {ensureLessonProgress,recordCorrectAnswer,enemyHpFloor,canClaimVictory} from './lesson-progress.js';
 
 // Role separation must hold at every floor/power, not just on the roster.
-for(let floor=0;floor<6;floor++) for(let power=1;power<=3;power++) {
+for(let floor=0;floor<MONSTERS.length;floor++) for(let power=1;power<=3;power++) {
   const hit=id=>attackDamage(id,floor,0,power,false);
   assert(hit('adventurer')>=hit('knight')*1.25,'Physical specialist should keep a material damage advantage');
   assert(hit('knight')>hit('wizard'),'Mage basic attacks remain the weakest');
