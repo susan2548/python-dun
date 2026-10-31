@@ -1,0 +1,28 @@
+/* Effects communicate contact without obscuring lessons or the HP/status HUD. */
+.fighter.pose-atlas{will-change:transform}
+.fighter.pose-atlas .sprite-raster{object-position:center bottom;transform-origin:50% 100%}
+.fighter.pose-atlas.hit{animation:contact-flash .23s steps(2,end)!important}
+.fighter.pose-atlas[data-motion="cast"]::before{display:none}
+@keyframes contact-flash{0%,60%{filter:brightness(1.35) saturate(.6)}100%{filter:none}}
+.battle-voice-caption{position:absolute;z-index:15;bottom:7px;left:50%;transform:translateX(-50%);max-width:85%;padding:5px 12px;background:#09151ee8;border-left:3px solid #9be8c2;color:#f3f4e5;font:600 clamp(12px,1.3vw,16px) 'Chakra Petch',sans-serif;text-align:center;pointer-events:none;text-shadow:0 1px #000}
+.battle-voice-caption.voice-enemy{border-color:#ec8b87}
+.impact-bloom{position:absolute;width:110px;height:110px;border:5px solid #9defff;box-shadow:inset 0 0 26px #7ce6ff,0 0 20px #64bcff;border-radius:50%;z-index:9;pointer-events:none;background:radial-gradient(circle,#ecffffaa,transparent 65%)}
+.bloom-fire{border-color:#ffbd55;box-shadow:inset 0 0 35px #ff743d,0 0 25px #ff743d;background:radial-gradient(circle,#fff1b5aa,#e34c3244,transparent 70%)}
+.bloom-frost{border-radius:0;clip-path:polygon(50% 0,60% 32%,100% 15%,70% 50%,100% 85%,60% 68%,50% 100%,40% 68%,0 85%,30% 50%,0 15%,40% 32%);background:#a1eaff}
+.bloom-poison,.bloom-web{border-color:#a1d77a;box-shadow:inset 0 0 26px #8cc968,0 0 20px #609e55}
+.bloom-dark{border-color:#bb94ed;box-shadow:inset 0 0 26px #8253ba,0 0 20px #8253ba}
+.bloom-gold{border-color:#ffd982;box-shadow:inset 0 0 26px #deb14c,0 0 20px #deb14c}
+.charge-gold{border-color:#ffe398;box-shadow:0 0 18px #d9b65b,inset 0 0 14px #d9b65b}
+.projectile-gold{background:radial-gradient(circle,#fff8d7,#f7c563 40%,#a97a2e 65%,transparent 70%);filter:drop-shadow(0 0 10px #f7c563)}
+.projectile-web{border-radius:0;background:repeating-conic-gradient(#bfe3a9 0 5deg,transparent 5deg 45deg);border:2px solid #bfe3a9;width:55px;height:55px;filter:drop-shadow(0 0 6px #91bd78)}
+.slash-shadow{border-top-color:#e2c9ff;border-right-color:#a66ddd;filter:drop-shadow(0 0 12px #b49dff)}
+.utility-aura{position:absolute;z-index:7;width:110px;height:130px;margin:-65px -55px;pointer-events:none;color:#9be8c2;--charge:0}
+.utility-aura b{position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);white-space:nowrap;font:700 15px 'Chakra Petch',sans-serif;letter-spacing:.07em;text-shadow:0 2px 3px #000}
+.guard-crest{position:absolute;inset:0 20px 16px;border:3px solid currentColor;clip-path:polygon(0 0,100% 0,100% 65%,50% 100%,0 65%);background:linear-gradient(135deg,#9be8c233,#9be8c208);font:normal 50px Georgia;text-align:center;line-height:110px;box-shadow:inset 0 0 22px #9be8c233}
+.aura-knight{color:#ffe09b}.aura-wizard{color:#a6ceff}
+.aura-focus:before,.aura-focus:after{content:'';position:absolute;width:110px;height:35px;bottom:7px;border:2px solid currentColor;border-radius:50%;box-shadow:0 0 13px currentColor;transform:rotate(calc(var(--charge)*180deg))}
+.aura-focus:after{bottom:42px;transform:rotate(calc(var(--charge)*-130deg)) scale(.70)}
+.focus-mote{position:absolute;width:5px;height:5px;background:currentColor;box-shadow:0 0 8px currentColor;left:20%;top:calc(90% - var(--charge)*85%)}
+.focus-mote:nth-child(2){left:80%;top:calc(75% - var(--charge)*60%)}.focus-mote:nth-child(3){left:50%;top:calc(60% - var(--charge)*65%)}
+@media(max-width:600px){.utility-aura{width:80px;height:100px;margin:-50px -40px}.guard-crest{inset:0 8px 10px;line-height:85px;font-size:36px}.aura-focus:before,.aura-focus:after{width:80px}.impact-bloom{width:75px;height:75px}.battle-voice-caption{top:45%;bottom:auto;transform:translate(-50%,-50%);max-width:90%;padding:3px 7px}.music-chip{max-width:52%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(prefers-reduced-motion:reduce){.fighter.pose-atlas{will-change:auto}.fighter.pose-atlas.hit{animation:none!important}.utility-aura:before,.utility-aura:after{transform:none}.focus-mote{top:25%}.impact-bloom,.motion-echo{display:none}}

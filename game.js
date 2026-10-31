@@ -4,13 +4,14 @@ import {
   playSfx,
   setMuted,
   switchTrack,
-} from "./audio-engine.js?v=3";
-import { mountSpriteMotion } from "./sprite-motion.js?v=4";
+} from "./audio-engine.js?v=4";
+import { mountSpriteMotion } from "./sprite-motion.js?v=5";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=4";
-import { playCutscene, playCombatMotion, playPotionMotion, skillIcon } from "./combat-cinema.js?v=3";
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=4";
+import {preloadCombatAudio,playBattleVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=1';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=3";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=3";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=4";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=2";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
@@ -372,12 +373,15 @@ function renderBattle(shouldScroll = true) {
     `<div class="fighter-shadow hero-shadow"></div><div class="fighter-shadow enemy-shadow"></div><div class="fx-layer" aria-hidden="true"></div><div class="music-chip">♫ ${currentTrackName()}</div><div class="combat-announcer" aria-live="polite"></div>`,
   );
   mountSpriteMotion(["adventurer", "knight", "wizard"].indexOf(save.classId), l.sprite);
+  preloadCombatAudio(save.classId);preloadCombatAudio(['zombie','skeleton','spider','wraith','golem','necromancer'][l.sprite]);
   $('.challenge-head strong').textContent = battle.phase < 3 ? `โจทย์หลัก ${battle.phase+1} / 3` : `ทำลายตราผนึก • รอบ ${battle.phase-2}`;
   $(".challenge-head").insertAdjacentHTML("afterend", `<p class="lesson-completion-note">${battle.answeredQuestions<3?`ผ่านโจทย์หลัก ${battle.answeredQuestions}/3 • ต้องผ่านครบ 3 ข้อ และลด HP ศัตรูจนหมด จึงจบด่าน`:"ผ่านโจทย์หลักครบ 3 ข้อแล้ว • ฝึกโจทย์ต่อพร้อมตราผนึกใหม่จนกว่า HP ศัตรูจะหมด"}</p>`);
   $('.challenge-head span').textContent = '●'.repeat(Math.min(battle.phase,3)) + '○'.repeat(Math.max(0,3-battle.phase));
   $('.battle-intel').insertAdjacentHTML('beforeend', '<div class="tactics-panel"><div id="enemyIntent"></div><p>'+MONSTERS[battle.level].description+'</p><div id="statusLine"></div><small>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนทุกครั้งจนตอบถูก</small></div>');
   $('.battle-controls').insertAdjacentHTML('beforeend', `<button class="btn ghost small" id="manaBtn">${skillIcon('mana')} ยามานา (${save.manaPotions})</button>`);
   $('#manaBtn').onclick=()=>usePotion('mana');
+  $('.battle-controls').insertAdjacentHTML('beforeend',`<button class="btn ghost small" id="voicesBtn" aria-pressed="${voicesEnabled()}">เสียงพูด: ${voicesEnabled()?'เปิด':'ปิด'}</button>`);
+  $('#voicesBtn').onclick=()=>{setVoicesEnabled(!voicesEnabled());$('#voicesBtn').textContent='เสียงพูด: '+(voicesEnabled()?'เปิด':'ปิด');$('#voicesBtn').setAttribute('aria-pressed',String(voicesEnabled()));toast('เสียงพูดตัวละคร AI: '+(voicesEnabled()?'เปิด (ต้องเปิดเสียงหลักด้วย)':'ปิด'));};
   $('#potionBtn').innerHTML=`${skillIcon('health')} ยาฮีล (${save.potions})`;
   $('.combat-history').ontoggle = event => { battleHistoryOpen=event.currentTarget.open; if(battleHistoryOpen)$('#battleLog').scrollTop=$('#battleLog').scrollHeight; };
   $('.combat-badge.player').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="heroStatuses"></div>');
@@ -476,9 +480,12 @@ async function executeUtilityTurn() {
   const command=battle.command;
   consumeFocus(battle.heroStatuses,command);
   expireActionStatuses(battle.heroStatuses);
-  if(command==='guard') {addStatus(battle.heroStatuses,'guard',1);announceCombat('ยกการ์ด • ป้องกัน 60%');log('ป้องกันหนึ่งเทิร์น ไม่ใช้มานา');spawnBattleFx('shield','hero');}
-  else {battle.mp=Math.min(battle.maxMp,battle.mp+1);addStatus(battle.heroStatuses,'focused',1);announceCombat('Focus • +1 MP / โจมตีเทิร์นถัดไป +30%');log('Focus ฟื้นสูงสุด 1 MP และสะสมสมาธิ (ไม่ทบซ้อน)');spawnBattleFx('heal','hero');}
-  advanceCooldowns(battle);updateCombat();await wait(500);await enemyTurn();
+  await playUtilityMotion(command,()=>{
+    if(command==='guard') {addStatus(battle.heroStatuses,'guard',1);announceCombat('ยกการ์ด • ป้องกัน 60%');log('ป้องกันหนึ่งเทิร์น ไม่ใช้มานา');}
+    else {battle.mp=Math.min(battle.maxMp,battle.mp+1);addStatus(battle.heroStatuses,'focused',1);announceCombat('Focus • +1 MP / โจมตีเทิร์นถัดไป +30%');log('Focus ฟื้นสูงสุด 1 MP และสะสมสมาธิ (ไม่ทบซ้อน)');}
+    updateCombat();
+  });
+  advanceCooldowns(battle);updateCombat();await wait(180);await enemyTurn();
   if(checkBattleEnd())return;
   battle.turn++;battle.busy=false;renderBattle(false);persist();
   $('#console').textContent=command==='guard'?'ป้องกันแล้ว เลือกคำสั่งสำหรับเทิร์นถัดไป':'Focus แล้ว • +1 MP ไม่เกินค่าสูงสุด และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30%';
@@ -541,6 +548,8 @@ function updateCombat() {
   if($('#enemyIntent')) $('#enemyIntent').innerHTML = `${skillIcon(intent.icon)} <strong>ท่าถัดไป: ${intent.name}</strong><span>ดาเมจพื้นฐาน ${intent.damage}</span>`;
   if($('#statusLine')) $('#statusLine').textContent=`แรงกดดัน ${battle.pressure||0}/3 • โทสะศัตรู +${Math.min(8,Math.floor((battle.turn-1)/4)*2)} • ชี้ไอคอนเพื่อดูสถานะและเวลา`;
   renderStatusBadges();
+  $('.fighter.hero').dataset.stance=battle.heroStatuses.guard?'guard':'';
+  $('.fighter.enemy').dataset.stance=battle.enemyGuard?'guard':'';
 }
 const wait = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -573,33 +582,31 @@ function spawnBattleFx(kind, target = "enemy") {
   setTimeout(() => fx.remove(), 1100);
 }
 
-async function animateHeroAction(action, impact) {
+async function animateHeroAction(action, impact, hit=true) {
   const heroClass = save.classId;
   const skill=skillFor(heroClass,battle.selectedSkill);
   if (action.name === "attack") {
     announceCombat("⚔ โจมตี!");
-    playSfx("attack");
     await playCombatMotion('hero', heroClass==='wizard'?'magic-bolt':'attack', () => {
-      spawnBattleFx(heroClass==='wizard'?'arcane-bolt':'slash','enemy'); impact();
-    });
+      if(hit)spawnBattleFx(heroClass==='wizard'?'arcane-bolt':'slash','enemy'); impact();
+    },{hit});
     return;
   }
   announceCombat(`✦ ${skill.name}!`);
   await playCutscene(heroClass,skill);
-  playSfx("skill");
   spawnBattleFx(`cast-${heroClass}`, "hero");
   await playCombatMotion('hero', skill.id, () => {
     const effects={fireball:'inferno',frost_lance:'frost',double_strike:'crosscut',smoke_blade:'curse',shield_bash:'aegis',iron_oath:'shield'};
-    spawnBattleFx(effects[skill.id],'enemy'); impact();
-  });
+    if(hit)spawnBattleFx(effects[skill.id],'enemy'); impact();
+  },{hit});
 }
 
-async function animateEnemyAction(move, impact) {
+async function animateEnemyAction(move, impact, hit=true) {
   announceCombat(`☠ ${move.name}`);
-  playSfx(move.icon === 'attack' ? 'enemy' : 'skill');
+  if(move.icon!=='attack'||move.name!=='โจมตี')playBattleVoice(enemyVoice(['zombie','skeleton','spider','wraith','golem','necromancer'][LEVELS[battle.level].sprite],move.name),'enemy');
   await playCombatMotion('enemy',move.icon,()=>{
-    spawnBattleFx(move.icon==='attack'?'claw':move.icon,'hero'); impact();
-  });
+    if(hit)spawnBattleFx(move.icon==='attack'?'claw':move.icon,'hero'); impact();
+  },{hit});
 }
 
 function flash(target) {
@@ -621,7 +628,6 @@ function damageEnemy(amount, label) {
   floatDamage(amount,'enemy');
   log(`${label} สร้างความเสียหาย ${amount}`);
   flash(".fighter.enemy");
-  playSfx("impact");
 }
 function floatDamage(amount,target) {
   const number=document.createElement('span');
@@ -651,7 +657,7 @@ async function applyAction(a) {
     if(isSkill&&skill.guard)addStatus(battle.heroStatuses,'guard',1);
     if(isSkill&&skill.fortify)addStatus(battle.heroStatuses,'fortified',2);
     updateCombat();
-  });
+  },hit);
   advanceCooldowns(battle,isSkill?skill.id:null);
   battle.lastHit=hit;
 }
@@ -677,7 +683,7 @@ async function enemyTurn() {
       }
       if(move.web) {if(attemptStatus(battle,battle.heroStatuses,'web',2,0,.75))log('ติดใย 2 เทิร์น');if(attemptStatus(battle,battle.heroStatuses,'blind',2,0,.5))log('ใยบังตา ความแม่นยำลด 2 เทิร์น');}
       if(move.drain)battle.mp=Math.max(0,battle.mp-move.drain);
-      flash('.fighter.hero');playSfx('hurt');
+      flash('.fighter.hero');
     }
     // A shield is defensive; lifesteal requires a successful hit.
     if(move.shield)battle.enemyGuard=true;
@@ -685,7 +691,7 @@ async function enemyTurn() {
     delete battle.heroStatuses.guard;
     expireActionStatuses(battle.enemyStatuses);
     updateCombat();
-  });
+  },hit);
 }
 async function frameBattle() {
   $("#code")?.blur();
@@ -894,7 +900,7 @@ $("#soundBtn").onclick = async () => {
     ? "เปิดดนตรีและเสียงเอฟเฟกต์"
     : `ปิดเสียง • ${currentTrackName()}`;
   toast(muted ? "ปิดเสียงแล้ว" : `เปิดเพลง: ${currentTrackName()}`);
-  if (!muted) playSfx("ui");
+  if (!muted) {playSfx("ui");if(screen==='battle'){preloadCombatAudio(save.classId);preloadCombatAudio($('.fighter.enemy')?.dataset.kind);}}
 };
 if (save.classId) {
   selected = save.classId;

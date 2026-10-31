@@ -1,0 +1,128 @@
+{
+  "double_strike": {
+    "text": "Watch my blade!",
+    "file": "double_strike.mp3",
+    "voicePreset": "am_fenrir",
+    "synthetic": true
+  },
+  "smoke_blade": {
+    "text": "Vanish in the shadows!",
+    "file": "smoke_blade.mp3",
+    "voicePreset": "am_fenrir",
+    "synthetic": true
+  },
+  "shield_bash": {
+    "text": "Stand and face me!",
+    "file": "shield_bash.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "iron_oath": {
+    "text": "By my oath, I will not fall!",
+    "file": "iron_oath.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "fireball": {
+    "text": "Burn before me!",
+    "file": "fireball.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  },
+  "frost_lance": {
+    "text": "Be still... and freeze!",
+    "file": "frost_lance.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  },
+  "zombie_bite": {
+    "text": "Join the rot!",
+    "file": "zombie_bite.mp3",
+    "voicePreset": "am_puck",
+    "synthetic": true
+  },
+  "skeleton_shield": {
+    "text": "Bones, stand firm!",
+    "file": "skeleton_shield.mp3",
+    "voicePreset": "am_echo",
+    "synthetic": true
+  },
+  "skeleton_cleave": {
+    "text": "Break beneath my blade!",
+    "file": "skeleton_cleave.mp3",
+    "voicePreset": "am_echo",
+    "synthetic": true
+  },
+  "spider_web": {
+    "text": "Caught in my web!",
+    "file": "spider_web.mp3",
+    "voicePreset": "af_nicole",
+    "synthetic": true
+  },
+  "wraith_drain": {
+    "text": "Your soul is mine!",
+    "file": "wraith_drain.mp3",
+    "voicePreset": "af_nicole",
+    "synthetic": true
+  },
+  "golem_guard": {
+    "text": "Stone endures!",
+    "file": "golem_guard.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "golem_quake": {
+    "text": "Crush them!",
+    "file": "golem_quake.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "necro_drain": {
+    "text": "Your power is mine!",
+    "file": "necro_drain.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  },
+  "necro_curse": {
+    "text": "Kneel before oblivion!",
+    "file": "necro_curse.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  },
+  "guard_adventurer": {
+    "text": "Not today!",
+    "file": "guard_adventurer.mp3",
+    "voicePreset": "am_fenrir",
+    "synthetic": true
+  },
+  "guard_knight": {
+    "text": "Hold the line!",
+    "file": "guard_knight.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "guard_wizard": {
+    "text": "Ward of light!",
+    "file": "guard_wizard.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  },
+  "focus_adventurer": {
+    "text": "Stay sharp.",
+    "file": "focus_adventurer.mp3",
+    "voicePreset": "am_fenrir",
+    "synthetic": true
+  },
+  "focus_knight": {
+    "text": "Steady my resolve.",
+    "file": "focus_knight.mp3",
+    "voicePreset": "am_michael",
+    "synthetic": true
+  },
+  "focus_wizard": {
+    "text": "Gather the arcane.",
+    "file": "focus_wizard.mp3",
+    "voicePreset": "bm_george",
+    "synthetic": true
+  }
+}

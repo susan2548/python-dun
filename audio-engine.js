@@ -94,6 +94,25 @@ const RECORDINGS = {
 };
 let recording;
 let mediaEpoch=0;
+let duckUntil=0;
+let duckTimer;
+export function combatAudioRuntime() {
+  if(muted)return null;
+  ensureAudio();context.resume().catch(()=>{});
+  return {context,destination:sfxBus};
+}
+export function duckMusic(seconds=1.8) {
+  if(muted)return;
+  duckUntil=Math.max(duckUntil,performance.now()+seconds*1000);
+  if(recording)recording.volume=.14;
+  if(musicBus&&context)musicBus.gain.setTargetAtTime(.12,context.currentTime,.03);
+  clearTimeout(duckTimer);
+  duckTimer=setTimeout(()=>{
+    if(performance.now()+20<duckUntil)return;
+    if(recording)recording.volume=.44;
+    if(musicBus&&context)musicBus.gain.setTargetAtTime(.34,context.currentTime,.15);
+  },Math.max(0,duckUntil-performance.now())+30);
+}
 function stopRecording() {
   mediaEpoch++;
   if(recording) {recording.pause();recording.removeAttribute('src');recording.load();recording=null;}
@@ -266,6 +285,7 @@ function restartMusic() {
 
 export async function setMuted(value) {
   muted = value;
+  window.dispatchEvent(new CustomEvent('dungeon-audio-state',{detail:{muted}}));
   if (!muted) {
     ensureAudio();
     await context.resume();
@@ -282,6 +302,7 @@ export async function setMuted(value) {
 export function switchTrack(key) {
   if (!TRACKS[key] || key === trackKey) return TRACKS[trackKey]?.name || "";
   trackKey = key;
+  window.dispatchEvent(new Event('dungeon-audio-scene'));
   restartMusic();
   return TRACKS[key].name;
 }

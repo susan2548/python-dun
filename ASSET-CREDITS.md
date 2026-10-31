@@ -1,5 +1,15 @@
 # Asset credits — Python Dungeon v1.5
 
+## Animation and combat sound v1.13
+
+Nine original transparent atlases in `assets/animation-v13` were generated with the built-in Imagegen editor, one full sheet per approved character reference. Character identity, costume, palette and facing were specified from the shipped art. Hero layout: 4 columns × 4 rows (idle 0–3, anticipation/attack/recovery 4–7, technique 8–11, guard 12–13, Focus 14–15). Monster layout: 4 columns × 3 rows (idle, attack, special). No scenery or labels. Crisp pixel clusters, unchanged scale and planted stance root were required. `manifest.json` records source generation filenames, alpha-isolation boxes, shared packing scale and frame counts. `tools/pack-animation-v13.py` packs the sheets and appends two existing hero potion poses; the spider's baked projectile pose is replaced with its open-fang contact pose, because the runtime owns projectile timing. Previous pose atlases remain as fallback assets.
+
+Study sources: [Aseprite frame duration](https://www.aseprite.org/docs/frame-duration/) and [animation workflow](https://www.aseprite.org/docs/animation/) for discrete poses and deliberate timing; [GDC: Zip! Thwack! Ping!](https://media.gdcvault.com/gdc2018/presentations/Lyndon_Michael_ZipThwackPing.pdf) for anticipation, action, reaction and impact. New authored art and code are used; reference games' assets are not redistributed.
+
+Nine selected Foley files in `assets/combat-audio` are from [Kenney RPG Audio](https://kenney.nl/assets/rpg-audio) and [Kenney Impact Sounds](https://kenney.nl/assets/impact-sounds), both **CC0**. Original license texts are included beside the files. The rename/source map is in `tools/prepare-combat-audio.py`. Synthesized spell sweeps, noise bursts and chords are original project sound design layered with these recordings.
+
+Twenty-one English character voice recordings are original **AI-generated speech**, using the local [Kokoro.js](https://github.com/hexgrad/kokoro/blob/main/kokoro.js/README.md) pipeline and [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) model (Apache 2.0 model license). No real person's voice was cloned. `voices.json` includes every transcript, voice preset, file and synthetic flag. Filtering, normalization, subtle echoes and monster pitch treatments are recorded in `tools/prepare-combat-audio.py`. Only rendered MP3s ship; the model, inference dependencies and source WAVs are excluded. Voice playback runs locally in the browser and does not send players' code or data to a speech service. Master sound starts off; character speech can be disabled independently.
+
 ## Recorded battle music (CC0)
 
 All six recordings are bundled locally, looped in the browser, and unchanged except the final boss WAV was encoded to MP3 at 128 kbps. Map music remains the original Web Audio composition.

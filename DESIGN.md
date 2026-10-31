@@ -87,6 +87,14 @@ Clicking a room only previews its scene, monster, HP/attack and Python topics. I
 
 Atlases contain authored joint/weapon poses at one shared scale with reviewed stance roots. Idle breath keeps the lower body planted. Attack sequence: windup → dash → contact hold → recoil → return. Spell sequence: charge pose → release pose → projectile → impact. Potion sequence: lift → sip/apply → lower. Reduced motion removes travel and idle animation while preserving timing semantics and one impact.
 
+### Combat presentation v1.13
+
+`assets/animation-v13` owns the current nine transparent atlases: four discrete idle poses, four attack poses, four technique poses; heroes also have two guard, two Focus and two retained potion poses. No opacity interpolation between body frames. Shared root/scale per actor; the boot-contact band uses the first idle frame, while shoulders, head and cloth breathe. Wraiths float instead. Display scale is constant across every pose and the canvas is anchored at its bottom. `assets/poses` remains the loading-error fallback.
+
+`animation-profiles.js` owns pose phase boundaries and hit-stop. `combat-cinema.js` owns the single animation clock and one guarded gameplay callback. Melee commits at contact, spells at projectile arrival; the two rogue slashes still make one aggregate combat action. Zombies rush to bite; spiders cast webs, spectres and the boss cast curses. Guard has a dedicated raised pose held through the enemy counter; Focus has a class-specific gathering pose/rings. Misses use evasion and a whoosh instead of impact audio/body VFX. Reduced motion shows a static action pose with the same single gameplay callback.
+
+`combat-audio.js` owns Foley, designed spell sounds and 21 original synthetic voice lines. All audio respects the master sound button (off initially). Character voices have a separately persisted switch, and music ducks while a line plays. New voices replace old ones; skipping a cut-in stops its line. Scene changes/muting cancel active and pending audio. English captions are non-interactive and sit above the editor CTA on narrow screens. No external TTS service, model download or credentials are needed at game runtime. Existing music, balance, lesson validation, cooldowns and save fields retain their ownership.
+
 ## Do's and Don'ts
 
 - Keep names on skill buttons identical to accepted Thai command strings.

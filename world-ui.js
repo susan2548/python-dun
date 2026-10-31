@@ -1,6 +1,6 @@
 import {SKILLS} from './tactical-engine.js?v=3';
 import {GOODS,quote,purchase} from './economy.js';
-import {skillIcon} from './combat-cinema.js?v=2';
+import {skillIcon} from './combat-cinema.js?v=4';
 const POS={adventurer:0,knight:50,wizard:100};
 const ROLES={adventurer:'ROGUE / เลือดไหล • ม่านควัน',knight:'KNIGHT / ป้องกัน • เกราะเหล็ก',wizard:'MAGE / เผาไหม้ • เยือกแข็ง'};
 const portrait=(id,extra='')=>`<div class="hero-portrait ${extra}" style="background-position:${POS[id]}% center" aria-hidden="true"></div>`;
