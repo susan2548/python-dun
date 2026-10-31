@@ -1,0 +1,33 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><base href="../"><title>Sprite frame integrity QA</title>
+<link rel="stylesheet" href="styles.css?v=4"><link rel="stylesheet" href="combat.css?v=2"><link rel="stylesheet" href="combat-polish.css?v=2">
+<style>body{padding:20px}h1{font-size:24px}button,select{padding:12px;margin:8px;font:inherit}.battle-scene{max-width:1100px;height:390px}pre{white-space:pre-wrap;font:12px/1.5 monospace;color:#c0f3d7}#scene{--scene:url('./assets/crystal-well.png')}.fixture-strip{display:flex;gap:12px;flex-wrap:wrap}.fixture-strip canvas{width:180px;height:180px;image-rendering:pixelated;background:#15242a;border:1px solid #789188}</style></head>
+<body><h1>ตรวจว่าตัวละครทั้งตัวมาจากเฟรมเดียวกัน</h1><p>ทดสอบภาพจริงบน canvas เทียบภาพต้นฉบับทุกพิกเซลทึบ ไม่ตัดแถบขาหรือลำตัวมาต่อจากเฟรมอื่น</p><select id="scope" aria-label="ตัวละครทดสอบ"><option value="all">ผู้เล่นและมอนสเตอร์ทั้ง 15 ตัว</option><option value="slime">สไลม์</option><option value="pair">นักผจญภัยและสไลม์</option></select><button id="run">เริ่มตรวจ 4 เฟรมยืน</button><button id="pair">ดูฉากนักผจญภัยกับสไลม์</button><p id="now"></p><div class="battle-scene" id="scene"></div><div class="fixture-strip" id="frames"></div><pre id="result"></pre>
+<script type="module">
+import {HERO_KINDS,MONSTER_KINDS,NEW_MONSTER_KINDS} from './animation-profiles.js?v=2';
+// The optional before=1 fixture is local-only, prepared from the previous Git
+// revision for the regression demonstration; default runs the shipped renderer.
+const before=new URLSearchParams(location.search).get('before')==='1';
+const {mountSpriteMotion}=await import(before?'/asset-sources/sprite-motion-before-v115.mjs':'./sprite-motion.js?v=7');
+const $=s=>document.querySelector(s),actors=[...HERO_KINDS,...MONSTER_KINDS,...NEW_MONSTER_KINDS];
+async function image(src){const im=new Image();im.src=src;await im.decode();return im;}
+function canvas(){const c=document.createElement('canvas');c.width=c.height=256;return c;}
+function diff(actual,expected){let bad=0,lower=0;for(let i=0;i<actual.length;i+=4){if(Math.max(actual[i+3],expected[i+3])<250)continue;let mismatch=false;for(let k=0;k<4;k++)if(Math.abs(actual[i+k]-expected[i+k])>2)mismatch=true;if(mismatch){bad++;if(i>=212*256*4)lower++;}}return {bad,lower};}
+$('#pair').onclick=async()=>{$('#scene').innerHTML='<div class="fighter hero"></div><div class="fighter enemy"></div>';await mountSpriteMotion(0,'slime');$('#now').textContent='นักผจญภัย / สไลม์ — '+(before?'ตัววาดเดิม':'ตัววาดแก้ไข');};
+$('#run').onclick=async()=>{
+ $('#run').disabled=true;$('#pair').disabled=true;$('#frames').innerHTML='';const results=[],scope=$('#scope').value,list=scope==='all'?actors:scope==='pair'?['adventurer','slime']:['slime'];
+ try{for(const kind of list){const hero=HERO_KINDS.includes(kind),floating=['wraith','bat','sentinel'].includes(kind),offsets=floating?(kind==='wraith'?[-2,-1,0,1,2]:[-20,-19,-18,-17,-16]):[0];
+ $('#now').textContent=(before?'ตัววาดเดิม: ':'ตัววาดแก้ไข: ')+kind;$('#scene').innerHTML=`<div class="fighter ${hero?'hero':'enemy'}"></div>`;await mountSpriteMotion(hero?HERO_KINDS.indexOf(kind):0,kind);
+ const atlas=await image(`./assets/${NEW_MONSTER_KINDS.includes(kind)?'animation-v15':'animation-v13'}/${kind}.png`),expected=canvas(),paint=expected.getContext('2d',{willReadFrequently:true}),frames=new Map(),start=performance.now();let firstLower;
+ await new Promise((resolve,reject)=>{function inspect(){const actor=$('.fighter'),actual=actor?.querySelector('canvas'),slot=Number(actor?.dataset.frame);if(actual&&Number.isInteger(slot)&&slot>=0&&slot<=3&&!frames.has(slot)){
+ const pixels=actual.getContext('2d',{willReadFrequently:true}).getImageData(0,0,256,256).data;let best={bad:Infinity,lower:Infinity};
+ for(const y of offsets){paint.clearRect(0,0,256,256);paint.drawImage(atlas,slot*256,0,256,256,0,y,256,256);const score=diff(pixels,paint.getImageData(0,0,256,256).data);if(score.bad<best.bad)best=score;}
+ let changedLower=0;if(firstLower){for(let i=212*256*4;i<pixels.length;i++)if(pixels[i]!==firstLower[i])changedLower++;}else firstLower=pixels.slice();
+ frames.set(slot,{slot,...best,changedLower});
+ if(kind==='slime'){const snapshot=canvas();snapshot.getContext('2d').drawImage(actual,0,0);snapshot.title='เฟรม '+slot;$('#frames').append(snapshot);}
+ }
+ if(frames.size===4)return resolve();if(performance.now()-start>8500)return reject(Error('ไม่ได้ครบ 4 เฟรม: ตรวจว่าเปิดลดการเคลื่อนไหวอยู่หรือไม่'));requestAnimationFrame(inspect);}requestAnimationFrame(inspect);});
+ results.push({kind,frames:[...frames.values()].sort((a,b)=>a.slot-b.slot),pass:[...frames.values()].every(f=>f.bad===0)});$('#result').textContent=JSON.stringify({before,actors:results.length,passed:results.filter(r=>r.pass).length,results},null,2);
+ }}catch(error){results.push({error:String(error)});}finally{$('#run').disabled=false;$('#pair').disabled=false;$('#result').textContent=JSON.stringify({before,actors:results.length,passed:results.filter(r=>r.pass).length,results},null,2);}
+};
+$('#pair').click();
+</script></body></html>

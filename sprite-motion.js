@@ -28,7 +28,7 @@ export async function mountSpriteMotion(heroIndex,monsterIndex){
         const staticPose=motion==='guard'?(hero?13:8):motion==='focus'?15:motion==='drink'?17:['cast','technique'].includes(motion)?9:motion==='attack'?5:0;
         let slot=reduced.matches?staticPose:poseFrame(kind,motion,p,time,fighter.dataset.variant);
         if(!newAtlas){const fallback=[0,0,1,1,2,2,3,2,4,4,5,4,0,0,4,4,6,7];slot=fallback[slot]??0;}
-        const bob=reduced.matches||motion!=='idle'?0:Math.round(Math.sin(time/(kind==='golem'?900:650))*(floating?2:1));
+        const bob=reduced.matches||motion!=='idle'||!floating?0:Math.round(Math.sin(time/650)*2);
         const key=`${slot}/${bob}/${motion}/${fighter.dataset.potion||''}`;
         if(key!==previous){
           paint.clearRect(0,0,256,256);const cols=newAtlas?4:hero?4:3;
@@ -39,12 +39,10 @@ export async function mountSpriteMotion(heroIndex,monsterIndex){
             paint.putImageData(pixels,0,0);
           }
           ctx.clearRect(0,0,256,256);
-          if(newAtlas&&motion==='idle'&&!floating){
-            // Frame art moves shoulders, head and cloth; the first pose supplies
-            // the unchanging boot-contact pixels. No crossfade or body scaling.
-            ctx.drawImage(source,0,0,256,212,0,-bob,256,212);
-            ctx.drawImage(atlas,0,212,256,44,0,212,256,44);
-          } else ctx.drawImage(source,0,floating?bob-(['bat','sentinel'].includes(kind)?18:0):0);
+          // A pose is indivisible: head, torso and feet must come from the same
+          // frame. Atlas packing already aligns grounded poses at the soles.
+          // Stitching a frozen lower band to a moving upper band tears the body.
+          ctx.drawImage(source,0,floating?bob-(['bat','sentinel'].includes(kind)?18:0):0);
           fighter.dataset.frame=String(slot);fighter.dataset.atlasVersion=newMonster?'15':newAtlas?'13':'7';previous=key;
         }
         raf=requestAnimationFrame(draw);
