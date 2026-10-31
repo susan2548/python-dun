@@ -1,5 +1,5 @@
 import {motionProfile,phaseAt,motionOffset} from './animation-profiles.js?v=1';
-import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=1';
+import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=2';
 const ICONS = { attack:'S_Sword01.png', double_strike:'S_Dagger02.png', smoke_blade:'S_Shadow04.png', iron_oath:'shield.svg', frost_lance:'S_Ice03.png', shield_bash:'shield.svg', fireball:'S_Fire03.png', poison:'S_Poison02.png', web:'S_Poison07.png', curse:'S_Shadow03.png', stone:'S_Earth03.png', mana:'P_Blue01.png', shield:'shield.svg', health:'P_Red01.png', armor:'A_Armour01.png', focus:'S_Buff01.png', blind:'S_Shadow04.png', frost:'S_Ice03.png', bleed:'bleed.svg', inn:'inn.svg', hint:'I_Book.png' };
 export function skillIcon(key) {
   return `<img class="skill-icon" src="./assets/icons/${ICONS[key] || ICONS.attack}" alt="" aria-hidden="true">`;
@@ -12,7 +12,7 @@ const HEROES = {
 // Preload portraits without blocking first play.
 const portrait = new Image(); portrait.src = './assets/cutin-portraits.png';
 export async function playCutscene(classId, skill = null) {
-  if(skill)playBattleVoice(skill.id);
+  stopBattleVoice();if(skill)combatCue(classId,skill.id,'cutin');
   const hero = {...HEROES[classId]};
   if(skill) {hero.name=skill.name;hero.english=skill.id==='fireball'?hero.english:skill.id.replaceAll('_',' ').toUpperCase();}
   const overlay = document.createElement('div');
@@ -58,6 +58,7 @@ export async function playCombatMotion(role,variant,impact,{hit:landed=true}={})
   const apply=oneImpact(impact),fighter=document.querySelector(`.fighter.${role}`),target=document.querySelector(`.fighter.${role==='hero'?'enemy':'hero'}`);
   if(!fighter||!target){apply();return;}
   const kind=fighter.dataset.kind,profile=motionProfile(kind,variant),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(role==='hero')playBattleVoice(['attack','magic-bolt'].includes(variant)?'attack_'+kind:variant,role,{chance:['attack','magic-bolt'].includes(variant)?.65:1});
   const scene=fighter.parentElement,box=scene.getBoundingClientRect(),a=spriteBounds(fighter),b=spriteBounds(target),direction=role==='hero'?1:-1;
   const heavy=['knight','golem'].includes(kind),ranged=profile.ranged,double=variant==='double_strike';
   const duration=reduced?360:profile.duration,contact=reduced?.5:profile.contact;
@@ -70,8 +71,9 @@ export async function playCombatMotion(role,variant,impact,{hit:landed=true}={})
   const animate=(n,keys,options)=>{const a=n.animate(keys,options);animations.push(a);return a;};
   fighter.dataset.motion=ranged?'cast':role==='enemy'&&variant!=='attack'?'technique':'attack';
   fighter.dataset.variant=variant;fighter.dataset.progress='0';fighter.style.zIndex='5';
-  combatCue(kind,variant,'windup');
-  let charge,projectile,release=false,hit=false,first=false,echoed=false;
+  const audioOptions={role,targetKind:target.dataset.kind,guarded:target.dataset.stance==='guard'};
+  combatCue(kind,variant,'windup',audioOptions);
+  let charge,projectile,release=false,secondRelease=false,hit=false,first=false,echoed=false;
   if(ranged&&!reduced){
     charge=add('motion-charge charge-'+theme,origin.x,origin.y);
     projectile=add('combat-projectile projectile-'+theme,origin.x,origin.y);projectile.style.opacity='0';
@@ -105,15 +107,16 @@ export async function playCombatMotion(role,variant,impact,{hit:landed=true}={})
             const n=document.createElement('canvas');n.width=n.height=256;n.getContext('2d').drawImage(raster,0,0);n.className='motion-echo';n.style.cssText=`left:${a.left-box.left+distance*(.30+i*.18)}px;top:${a.top-box.top}px;width:${a.width}px;height:${a.height}px`;scene.append(n);nodes.push(n);animate(n,[{opacity:.22-i*.06},{opacity:0}],{duration:290,fill:'both'});
           }
         }
-        if(double&&!first&&p>=.37){first=true;slash();combatCue(kind,variant,'release');}
+        if(double&&!first&&p>=.37){first=true;slash();}
       }
-      if(!release&&p>=(reduced?.2:profile.release)){release=true;combatCue(kind,variant,'release');}
+      if(double&&!secondRelease&&p>=(reduced?.42:.55)){secondRelease=true;combatCue(kind,variant,'release',audioOptions);}
+      if(!release&&p>=(reduced?.2:profile.release)){release=true;combatCue(kind,variant,'release',audioOptions);}
       if(!hit&&p>=contact){
         hit=true;if(!reduced){if(!ranged)slash(double);else if(landed){
           const n=add('impact-bloom bloom-'+theme,dest.x,dest.y);animate(n,[{opacity:1,transform:'translate(-50%,-50%) scale(.35)'},{opacity:0,transform:'translate(-50%,-50%) scale(1.4)'}],{duration:420,fill:'both'});
         }
         const raster=target.querySelector('canvas');if(raster)animate(raster,[{transform:'translateX(0)'},{transform:`translateX(${direction*(landed?(target.dataset.stance==='guard'?2:7):-9)}px)`,offset:.3},{transform:'translateX(0)'}],{duration:240});}
-        combatCue(kind,variant,landed?'hit':'release');apply();
+        combatCue(kind,variant,landed?'hit':'miss',audioOptions);apply();
       }
     },contact,reduced?0:profile.hitStop);
   }finally{

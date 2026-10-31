@@ -1,0 +1,43 @@
+PYTHON DUNGEON - recorded combat audio v1.14
+
+Character voices (human performance): John Carroll
+Warrior Voice Pack: https://johncarroll.itch.io/warrior-voice-pack
+Mage Voice Pack: https://johncarroll.itch.io/mage-voice-pack
+Orc Voice Pack: https://johncarroll.itch.io/orc-voice-pack
+License: CC0 1.0, as specified in the author's Asset license field.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Sword attacks / clashes: StarNinjas
+https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes
+License: CC0 1.0
+
+RPG and creature effects: rubberduck
+https://opengameart.org/content/80-cc0-rpg-sfx
+https://opengameart.org/content/80-cc0-creature-sfx
+License: CC0 1.0
+
+RPG Sound Pack / shade recordings: artisticdude
+https://opengameart.org/content/rpg-sound-pack
+License: CC0 1.0
+
+Zombie / Skeleton / Monster Voice Effects: ArcadeParty
+https://opengameart.org/content/zombie-skeleton-monster-voice-effects
+License: CC0 1.0
+
+Impact Sounds: Kenney
+https://kenney.nl/assets/impact-sounds
+License: CC0 1.0
+
+Magic SFX Sample: ViRiX Dreamcore (David Mckee)
+https://opengameart.org/content/magic-sfx-sample
+https://soundcloud.com/virix
+License: Creative Commons Attribution 3.0 Unported
+https://creativecommons.org/licenses/by/3.0/
+Some of the sounds in this project were created by ViRiX Dreamcore (David Mckee).
+
+Changes: selected individual recordings; trimmed lead/trailing silence;
+gain/headroom adjustment; high-pass filtering; a limiter without makeup gain;
+short fades; MP3 encoding; modest playback-rate variation for effects and
+selected monster voices; layering/timing in game. The source files, source
+hashes, processing and individual authors/licenses are in manifest.json.
+No TTS is used by this version's combat audio.

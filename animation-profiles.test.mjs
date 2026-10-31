@@ -26,10 +26,4 @@ for(const kind of [...HERO_KINDS,...MONSTER_KINDS]){
  const png=fs.readFileSync(new URL('./assets/animation-v13/'+kind+'.png',import.meta.url));
  assert.equal(png.readUInt32BE(16),1024);assert.equal(png.readUInt32BE(20),HERO_KINDS.includes(kind)?1280:768);
 }
-const voices=JSON.parse(fs.readFileSync(new URL('./assets/combat-audio/voices.json',import.meta.url)));
-assert.equal(Object.keys(voices).length,21);
-assert.equal(new Set(Object.values(voices).map(v=>v.text)).size,21);
-for(const [id,v]of Object.entries(voices)){
- assert.equal(v.synthetic,true);assert.ok(fs.statSync(new URL('./assets/combat-audio/'+v.file,import.meta.url)).size>10000,id);
-}
-console.log('Animation timing: 9 actors, four idle frames, all pose slots, 10–144 fps, one contact, planted return; 21 distinct voiced lines/assets passed.');
+console.log('Animation timing passed: 9 actors, four idle frames, all pose slots, 10–144 fps, one contact and planted return. Audio coverage lives in combat-soundbank.test.mjs.');

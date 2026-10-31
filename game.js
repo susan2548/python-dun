@@ -8,10 +8,10 @@ import {
 import { mountSpriteMotion } from "./sprite-motion.js?v=5";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=4";
-import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=4";
-import {preloadCombatAudio,playBattleVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=1';
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=5";
+import {preloadCombatAudio,playBattleVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=2';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=3";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=4";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=5";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=2";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
@@ -380,8 +380,8 @@ function renderBattle(shouldScroll = true) {
   $('.battle-intel').insertAdjacentHTML('beforeend', '<div class="tactics-panel"><div id="enemyIntent"></div><p>'+MONSTERS[battle.level].description+'</p><div id="statusLine"></div><small>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนทุกครั้งจนตอบถูก</small></div>');
   $('.battle-controls').insertAdjacentHTML('beforeend', `<button class="btn ghost small" id="manaBtn">${skillIcon('mana')} ยามานา (${save.manaPotions})</button>`);
   $('#manaBtn').onclick=()=>usePotion('mana');
-  $('.battle-controls').insertAdjacentHTML('beforeend',`<button class="btn ghost small" id="voicesBtn" aria-pressed="${voicesEnabled()}">เสียงพูด: ${voicesEnabled()?'เปิด':'ปิด'}</button>`);
-  $('#voicesBtn').onclick=()=>{setVoicesEnabled(!voicesEnabled());$('#voicesBtn').textContent='เสียงพูด: '+(voicesEnabled()?'เปิด':'ปิด');$('#voicesBtn').setAttribute('aria-pressed',String(voicesEnabled()));toast('เสียงพูดตัวละคร AI: '+(voicesEnabled()?'เปิด (ต้องเปิดเสียงหลักด้วย)':'ปิด'));};
+  $('.battle-controls').insertAdjacentHTML('beforeend',`<button class="btn ghost small" id="voicesBtn" aria-pressed="${voicesEnabled()}">เสียงตัวละคร: ${voicesEnabled()?'เปิด':'ปิด'}</button>`);
+  $('#voicesBtn').onclick=()=>{setVoicesEnabled(!voicesEnabled());$('#voicesBtn').textContent='เสียงตัวละคร: '+(voicesEnabled()?'เปิด':'ปิด');$('#voicesBtn').setAttribute('aria-pressed',String(voicesEnabled()));toast('เสียงพากย์และเสียงออกแรง: '+(voicesEnabled()?'เปิด (ต้องเปิดเสียงหลักด้วย)':'ปิด'));};
   $('#potionBtn').innerHTML=`${skillIcon('health')} ยาฮีล (${save.potions})`;
   $('.combat-history').ontoggle = event => { battleHistoryOpen=event.currentTarget.open; if(battleHistoryOpen)$('#battleLog').scrollTop=$('#battleLog').scrollHeight; };
   $('.combat-badge.player').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="heroStatuses"></div>');
@@ -604,6 +604,7 @@ async function animateHeroAction(action, impact, hit=true) {
 async function animateEnemyAction(move, impact, hit=true) {
   announceCombat(`☠ ${move.name}`);
   if(move.icon!=='attack'||move.name!=='โจมตี')playBattleVoice(enemyVoice(['zombie','skeleton','spider','wraith','golem','necromancer'][LEVELS[battle.level].sprite],move.name),'enemy');
+  else playBattleVoice('attack_'+['zombie','skeleton','spider','wraith','golem','necromancer'][LEVELS[battle.level].sprite],'enemy',{chance:.55});
   await playCombatMotion('enemy',move.icon,()=>{
     if(hit)spawnBattleFx(move.icon==='attack'?'claw':move.icon,'hero'); impact();
   },{hit});
