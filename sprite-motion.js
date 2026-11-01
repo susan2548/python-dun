@@ -14,6 +14,10 @@ export async function mountSpriteMotion(heroIndex,monsterIndex){
       if(!fighter.isConnected)return;
       const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;canvas.className='sprite-raster';canvas.setAttribute('aria-hidden','true');
       fighter.append(canvas);fighter.classList.add('raster-ready','pose-atlas');fighter.dataset.kind=kind;
+      // New monsters supply an inline portrait while the atlas loads. Inline
+      // styles outrank .raster-ready, so explicitly retire that fallback once
+      // the animated surface owns the fighter; otherwise two bodies are drawn.
+      fighter.style.backgroundImage='none';
       // Display scale is shared by every pose, including potion frames.
       const artScale=newAtlas?({knight:1.13,wizard:1.08,skeleton:1.10,golem:1.15,necromancer:1.08,slime:1.3,mimic:1.3,scarab:1.3,icewolf:1.25}[kind]||1):1;
       fighter.dataset.artScale=String(artScale);canvas.style.scale=String(artScale);

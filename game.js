@@ -9,7 +9,7 @@ import {
   setMuted,
   switchTrack,
 } from "./audio-engine.js?v=4";
-import { mountSpriteMotion } from "./sprite-motion.js?v=7";
+import { mountSpriteMotion } from "./sprite-motion.js?v=8";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=5";
 import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=6";

@@ -7,7 +7,7 @@ import {HERO_KINDS,MONSTER_KINDS,NEW_MONSTER_KINDS} from './animation-profiles.j
 // The optional before=1 fixture is local-only, prepared from the previous Git
 // revision for the regression demonstration; default runs the shipped renderer.
 const before=new URLSearchParams(location.search).get('before')==='1';
-const {mountSpriteMotion}=await import(before?'/asset-sources/sprite-motion-before-v115.mjs':'./sprite-motion.js?v=7');
+const {mountSpriteMotion}=await import(before?'/asset-sources/sprite-motion-before-v115.mjs':'./sprite-motion.js?v=8');
 const $=s=>document.querySelector(s),actors=[...HERO_KINDS,...MONSTER_KINDS,...NEW_MONSTER_KINDS];
 async function image(src){const im=new Image();im.src=src;await im.decode();return im;}
 function canvas(){const c=document.createElement('canvas');c.width=c.height=256;return c;}

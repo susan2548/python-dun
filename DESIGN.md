@@ -115,6 +115,7 @@ New slime, mimic, scarab, bat, ice wolf and clockwork sentinel use six distinct 
 
 ## Do's and Don'ts
 
+- A fighter's loading portrait must retire when its animation canvas mounts, including inline background-image declarations. Keep the portrait if atlas loading fails; never render it behind a successfully mounted canvas. Test the composed DOM/CSS surface, not only canvas pixels.
 - Keep names on skill buttons identical to accepted Thai command strings.
 - Show the combat scene before an action starts; retain all lesson validation.
 - Do not restore HP/MP on scene changes or allow animation timing to duplicate damage.
