@@ -20,7 +20,7 @@ import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
-import {learner,mountLearners} from './learners.js?v=5';
+import {learner,mountLearners} from './learners.js?v=6';
 import {ActivePlayClock,normalizeTiming} from './play-clock.js?v=1';
 import {combatInventory} from './combat-inventory.js?v=2';
 import {openAudioSettings} from './audio-settings.js?v=1';

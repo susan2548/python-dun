@@ -1,6 +1,7 @@
 import {CloudSaveQueue} from './cloud-save.js?v=1';
 import {formatDuration} from './play-clock.js?v=1';
 import {RankingLiveFeed} from './ranking-live.js?v=1';
+import {MAIN_SITE,authErrorMessage,needsMainSite} from './auth-feedback.js?v=1';
 const ROOT='python-dungeon-rpg-v1',META=ROOT+':meta:',LAST=ROOT+':last-user';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 const read=(key,fallback=null)=>{try{return JSON.parse(localStorage.getItem(key))??fallback;}catch{return fallback;}};
@@ -145,7 +146,7 @@ function loginForm(mode,email=''){
  <label class="account-field" for="authPassword">${reset?'รหัสผ่านใหม่':'รหัสผ่าน'}<span class="password-wrap"><input id="authPassword" name="password" type="password" autocomplete="${register||reset?'new-password':'current-password'}" minlength="8" maxlength="128" aria-describedby="passwordHelp authError"><button type="button" id="showPassword" aria-pressed="false" aria-label="แสดงรหัสผ่าน">แสดง</button></span></label>
  <p id="passwordHelp">${register||reset?'ใช้รหัสผ่านอย่างน้อย 8 ตัวอักษร':'ใช้รหัสผ่านที่สมัครไว้กับเกม'}</p>
  ${register?'<label class="account-field" for="authConfirm">ยืนยันรหัสผ่าน<input id="authConfirm" type="password" autocomplete="new-password" aria-describedby="authError"></label>':''}
- <div class="auth-result"><p class="account-error" id="authError" role="alert"></p><p class="account-feedback" id="authFeedback" role="status"></p></div>
+ <div class="auth-result"><p class="account-error" id="authError" role="alert"></p><a id="authCanonical" href="https://python-dungeon-live.vercel.app/game#login" hidden>เปิดเว็บหลักเพื่อเข้าสู่ระบบ →</a><p class="account-feedback" id="authFeedback" role="status"></p></div>
  <div class="modal-actions"><button class="btn account-submit" type="submit"><span>${register?'สร้างบัญชี · เริ่มเส้นทาง':reset?'ตั้งรหัสผ่านใหม่':'เข้าสู่ระบบ · เปิดประตู'}</span><span aria-hidden="true">→</span></button></div>
  <div class="auth-links"><button type="button" id="authToggle">${register||reset?'มีบัญชีแล้ว • เข้าสู่ระบบ':'ยังไม่มีบัญชี • สมัครเลย'}</button>${mode==='login'?'<button type="button" id="forgotPassword">ลืมรหัสผ่าน</button>':''}</div>
  </form><div class="gate-save-note"><span aria-hidden="true">◇</span><p><strong>หนึ่งบัญชี หนึ่งสมุดผจญภัย</strong><br>เซฟอัตโนมัติ · เล่นต่อข้ามเครื่อง · เก็บดาวเมื่อจบด่าน</p></div><p class="account-privacy">อีเมลใช้สำหรับเข้าสู่ระบบและกู้รหัสผ่านเท่านั้น<br>ตารางอันดับแสดงชื่อในเกม ไม่แสดงอีเมล</p>`);
@@ -160,7 +161,7 @@ function loginForm(mode,email=''){
  $('#authForm').onsubmit=async e=>{
   e.preventDefault();if(transition)return;
   const email=$('#authEmail').value.trim(),password=$('#authPassword').value,name=$('#authName')?.value.trim(),b=e.submitter||$('#authForm button[type="submit"]');
-  $('#authError').textContent='';$('#authForm').querySelectorAll('[aria-invalid]').forEach(n=>n.removeAttribute('aria-invalid'));
+  $('#authError').textContent='';$('#authCanonical').hidden=true;$('#authForm').querySelectorAll('[aria-invalid]').forEach(n=>n.removeAttribute('aria-invalid'));
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return problem('กรอกอีเมลให้ครบ เช่น student@example.com','#authEmail');
   if(password.length<8||password.length>128)return problem('รหัสผ่านต้องยาว 8–128 ตัวอักษร','#authPassword');
   if(register&&(name.length<2||name.length>24||/[<>@\p{Cc}\p{Cf}]/u.test(name)))return problem('ใช้ชื่อเล่นยาว 2–24 ตัวอักษร ไม่ใช่อีเมล','#authName');
@@ -169,12 +170,13 @@ function loginForm(mode,email=''){
   transition=true;paintAccount();document.querySelectorAll('[data-auth-mode],#authToggle,#forgotPassword,#sendReset').forEach(el=>el.disabled=true);b.disabled=true;b.setAttribute('aria-busy','true');$('#authFeedback').textContent='กำลังดำเนินการ…';
   try{
    const client=await auth(),result=reset?await client.emailOtp.resetPassword({email,otp:$('#authOtp').value.trim(),password}):register?await client.signUp.email({email,password,name}):await client.signIn.email({email,password});
-   if(result.error)throw Error(reset?'รหัสอีเมลไม่ถูกต้องหรือหมดอายุ ลองส่งรหัสใหม่':register?'สร้างบัญชีไม่ได้ อีเมลอาจถูกใช้แล้ว ลองเข้าสู่ระบบหรือกู้รหัสผ่าน':'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจแล้วลองใหม่');
+   if(result.error)throw Object.assign(Error(authErrorMessage(result.error,mode)),{status:result.error.status??result.error.statusCode,code:result.error.code});
    if(reset){transition=false;loginForm('login',email);$('#authFeedback').textContent='ตั้งรหัสผ่านใหม่แล้ว เข้าสู่ระบบด้วยรหัสใหม่ได้เลย';return;}
    const session=await api('/api/auth/get-session');if(!session?.user)throw Error('ยังยืนยันการเข้าสู่ระบบไม่ได้ กรุณาตรวจอีเมลแล้วลองเข้าสู่ระบบอีกครั้ง');
    hooks.closeModal();history.replaceState(null,'',location.pathname+location.search);await activate(session.user,{nickname:register?name:undefined});hooks.toast('เข้าสู่ระบบแล้ว • โหลดเซฟของคุณเรียบร้อย');
   }catch(error){
-   const message=/[\u0E00-\u0E7F]/.test(error.message)?error.message:reset?'รหัสอีเมลไม่ถูกต้องหรือหมดอายุ กรุณาส่งรหัสใหม่':register?'สร้างบัญชีไม่สำเร็จ ตรวจข้อมูลหรือลองเข้าสู่ระบบด้วยบัญชีเดิม':'อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจแล้วลองใหม่';
+   const message=/[\u0E00-\u0E7F]/.test(error.message)?error.message:authErrorMessage(error,mode);
+   if(needsMainSite(error)&&$('#authCanonical')){const target=new URLSearchParams(location.search).get('return');$('#authCanonical').href=MAIN_SITE+'/game'+(['/teacher','/assessment'].includes(target)?'?return='+encodeURIComponent(target):'')+'#login';$('#authCanonical').hidden=false;}
    if($('#authError'))problem(message,'#authEmail');else hooks.toast(message);
   }
   finally{transition=false;paintAccount();document.querySelectorAll('[data-auth-mode],#authToggle,#forgotPassword,#sendReset').forEach(el=>el.disabled=false);if(b.isConnected){b.disabled=false;b.removeAttribute('aria-busy');$('#authFeedback').textContent='';}}

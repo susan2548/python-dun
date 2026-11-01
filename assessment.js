@@ -8,7 +8,7 @@ const phaseName=p=>p==='pre'?'ก่อนเรียน':'หลังเร�
 const badge=open=>`<span class="pill ${open?'':'closed'}">${open?'เปิดรับคำตอบ':'ปิดรับคำตอบ'}</span>`;
 function route(classId){return (teacherPage?'/teacher':'/assessment')+(classId?'?class='+classId:'');}
 function gate(error){
- $('#portalAccount').textContent=error.status===401?'บัญชีผู้เรียน':'ยังตรวจบัญชีไม่ได้';
+ if(!home?.user||error.status===401)$('#portalAccount').textContent=error.status===401?'บัญชีผู้เรียน':'ยังตรวจบัญชีไม่ได้';
  $('#portal').innerHTML=`<section class="panel gate-panel"><img src="/assets/brand/runegate-serpent.svg" alt=""><p class="inscription">THE RUNEBREAKER ACADEMY</p><h1>${error.status===401?'เข้าสู่หอจดหมายเหตุนักโค้ด':'ยังเปิดสมุดบันทึกไม่ได้'}</h1><p>${error.status===401?'ใช้บัญชีเดียวกับเกม เพื่อเก็บแบบทดสอบและผลการเรียนไว้กับคุณ':esc(error.message)}</p>${error.status===401?`<a class="btn" href="/game?return=${teacherPage?'/teacher':'/assessment'}#login">เข้าสู่ระบบ / สมัครบัญชี →</a>`:'<button class="btn" id="retryPortal">ลองอีกครั้ง</button>'}</section>`;
  $('#retryPortal')?.addEventListener('click',()=>location.reload());
 }

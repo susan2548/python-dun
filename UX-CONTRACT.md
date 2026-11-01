@@ -1,5 +1,9 @@
 # UI ownership and learner data contract
 
+## Auth failure recovery v1.22.2
+
+`auth-feedback.js` owns fixed public auth error messages; `learners.js` owns form busy state and the conditional canonical-domain recovery link. A 403 must not masquerade as invalid credentials. Keep recovery destinations fixed to the canonical domain and allowlist return paths; never reflect provider details or passwords. Resubmission hides stale recovery links. Assessment permission gates preserve a known signed-in identity and logout control; authorization remains enforced by the server. Verification is documented in QA-v1.22.2.md.
+
 ## Assessment workflow v1.22
 
 Authoritative sources: explicit user approval for a same-site assessment workflow, the supplied six-unit teaching plan, and `server/assessment-schema.sql` / `api/assessment.js` server invariants. `ASSESSMENT.md` documents those rules and operations. Existing learner auth, save and game contracts below remain in force.
