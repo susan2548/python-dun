@@ -20,7 +20,8 @@ import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
-import {learner,mountLearners} from './learners.js?v=3';
+import {learner,mountLearners} from './learners.js?v=4';
+import {ActivePlayClock,normalizeTiming} from './play-clock.js?v=1';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -43,12 +44,15 @@ const fresh = () => ({
   attackBonus: 0,
   hpBonus: 0,
   runId: crypto.randomUUID(),
+  playTimeMs: 0,
+  timingVersion: 1,
 });
 let save;
 try {
   const stored=JSON.parse(localStorage.getItem(STORAGE)||"{}");
   if(Object.keys(stored).length)migrateCampaign(stored);
   save = { ...fresh(), ...stored };
+  normalizeTiming(save,stored);
 } catch {
   save = fresh();
 }
@@ -62,7 +66,13 @@ let screen = "intro",
   workerId = 0,
   workerPending = new Map();
 const app = $("#app");
+const playClock=new ActivePlayClock();
+function samplePlayTime(){
+  return playClock.sample(save,learner.canPlay()&&!document.hidden&&!!save.classId&&
+    ((screen==='map'&&save.cleared<LEVELS.length)||(screen==='battle'&&!battle?.finished)),learner.user?.id+':'+save.runId);
+}
 function persist() {
+  samplePlayTime();
   // Commit a whole turn atomically. Reload cannot replay the attack before its counter.
   if(screen==='battle' && battle?.busy) {updateBar();return;}
   if (screen === "battle" && battle && !battle.rescued) {
@@ -74,6 +84,7 @@ function persist() {
   updateBar();
 }
 function updateBar() {
+  samplePlayTime();
   switchTrack(
     screen === "battle" && battle
       ? `floor${LEVELS[battle.level].music}`
@@ -464,7 +475,7 @@ async function executeUtilityTurn() {
   $('#console').textContent=command==='guard'?'ป้องกันแล้ว เลือกคำสั่งสำหรับเทิร์นถัดไป':'Focus แล้ว • +1 MP ไม่เกินค่าสูงสุด และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30%';
 }
 function showRules() {
-  showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูก ด้วงเกราะ โกเลม และจักรกลไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่จับเวลาอ่านโจทย์ ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องตอบถูกอย่างน้อย 3 โจทย์ในเรื่องนี้และลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li><li>ใช้ยาฟื้น 20 HP หรือ 3 MP พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น ยังใช้หนึ่งเทิร์นและสถานะยังเดินเวลา</li><li>ดาววัดการเขียนโค้ด: ไม่แก้คำตอบ = 3 ดาว, แก้ 1–2 ครั้ง = 2 ดาว, มากกว่านั้น = 1 ดาว เลือดคงเหลือไม่หักดาว</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
+  showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูก ด้วงเกราะ โกเลม และจักรกลไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่มีเวลาจำกัดต่อข้อ (เวลารวมใช้ตัดสินอันดับเมื่อดาวเท่ากัน) ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องตอบถูกอย่างน้อย 3 โจทย์ในเรื่องนี้และลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li><li>ใช้ยาฟื้น 20 HP หรือ 3 MP พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น ยังใช้หนึ่งเทิร์นและสถานะยังเดินเวลา</li><li>ดาววัดการเขียนโค้ด: ไม่แก้คำตอบ = 3 ดาว, แก้ 1–2 ครั้ง = 2 ดาว, มากกว่านั้น = 1 ดาว เลือดคงเหลือไม่หักดาว</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
 }
 async function usePotion(type='health') {
   if(!learner.requireLogin())return;
@@ -829,7 +840,7 @@ function victory() {
   updateFrontier(save);
   save.gold += gold;
   const nextLevel=nextFloorAfterClear(save,i);
-  learner.recordVictory(battle,save.classId);
+  samplePlayTime();learner.recordVictory(battle,save.classId,save);
   persist();
   playSfx("victory");
   showModal(
@@ -897,16 +908,21 @@ $("#soundBtn").onclick=toggleAudio;
 mountLearners({
   getSave:()=>save,persist,showModal,closeModal,toast,
   onAuthGate:()=>{if(screen==='battle'&&battle&&!battle.busy)persist();screen='auth';battle=null;codeEditor=null;closeStatusInspector();updateBar();},
-  beforeDashboard:()=>{if(screen==='battle'&&battle)persist();},
+  beforeDashboard:persist,
   canSwitch:()=>!(screen==='battle'&&battle?.busy),
   onIdentity:data=>{
     document.title='PYTHON DUNGEON — โค้ดเพื่อพิชิตดันเจี้ยน';
     resetWorker();battle=null;codeEditor=null;battleHistoryOpen=false;screen='intro';
     if(data)migrateCampaign(data);
-    save={...fresh(),...(data||{})};migrateClassBalance(save);
+    playClock.reset();save={...fresh(),...(data||{})};normalizeTiming(save,data);migrateClassBalance(save);
     selected=save.classId||'adventurer';
     if(learner.user)localStorage.setItem(learner.key,JSON.stringify(save));renderIntro();
   },
   onDashboard:()=>{screen='dashboard';battle=null;window.scrollTo(0,0);updateBar();},
   onReturn:()=>save.classId?renderMap():renderIntro(),
 });
+// Never commit a half-resolved turn. Reading and typing still count as play.
+setInterval(samplePlayTime,1000);
+setInterval(()=>{if(learner.canPlay()&&['map','battle'].includes(screen)&&!document.hidden)persist();},15000);
+document.addEventListener('visibilitychange',()=>{samplePlayTime();if(learner.canPlay()&&['map','battle'].includes(screen))persist();});
+window.addEventListener('pagehide',()=>{samplePlayTime();if(learner.canPlay()&&['map','battle'].includes(screen))persist();});

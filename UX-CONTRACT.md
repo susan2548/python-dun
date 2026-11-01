@@ -1,6 +1,6 @@
 # UI ownership and learner data contract
 
-Source: user's requested class-specific Run calls, separate learner authentication and a ranking for players who finish the game. Campaign and learning invariants are owned by `campaign.js`, `lesson-progress.js`, `question-bank.js` and `hero-classes.js`.
+Source: user requests for separate learner authentication and live star ranking, including ongoing learners; completed ties use active time to finish (v1.19). Campaign and learning invariants are owned by `campaign.js`, `lesson-progress.js`, `question-bank.js` and `hero-classes.js`.
 
 | Capability | Canonical owner | Observable behavior / verification |
 | --- | --- | --- |
@@ -9,7 +9,7 @@ Source: user's requested class-specific Run calls, separate learner authenticati
 | Toast | game.js toast | Shared live status; critical auth/sync errors also remain inline |
 | Scrollbar | editor.css global rules | Visible, operable global baseline; ranking table owns horizontal overflow |
 | Cloud saves | cloud-save.js + api/player.js | Account-bound local storage, verified server session, expected-account guard, revisions and idempotent mutation IDs; conflict pauses writes for explicit choice |
-| Ranking list | learners.js + api/ranking.js | Native table, server-fixed stars-desc/date-asc sort, 20/page with boundary clamping, top four, actual loading/empty/error/success states |
+| Ranking list | learners.js + api/ranking.js | Native table, server-fixed stars-desc/completion-duration-asc sort, 20/page with boundary clamping, top four, actual loading/empty/error/success states |
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 | --- | --- | --- | --- | --- |
@@ -20,11 +20,11 @@ Source: user's requested class-specific Run calls, separate learner authenticati
 
 `premium-ui.json` audits `public/`, the exact generated production runtime copies. Build before auditing. Development-only sprite labs, source docs, server helpers and duplicate root copies are outside that published UI surface. Dynamically bound buttons remain subject to real browser verification even when the static scanner cannot detect their handlers.
 
-Only game nicknames (2–24 characters), class, best star sum and completion date appear publicly. Do not publish email, auth user ID, passwords or session tokens. Session cookies are managed by the Neon server toolkit using HttpOnly/Secure cookies, same-origin proxy and exact-origin checks on writes. Database credentials and signing secrets are server-only. Build publishes an explicit static runtime directory, excluding .env and server source.
+Only game nicknames (2–24 characters), class, best run star sum, cleared-floor count, completion date and completion duration appear publicly. Do not publish email, auth user ID, passwords or session tokens. Session cookies are managed by the Neon server toolkit using HttpOnly/Secure cookies, same-origin proxy and exact-origin checks on writes. Database credentials and signing secrets are server-only. Build publishes an explicit static runtime directory, excluding .env and server source.
 
 Legacy guest progress retains the original browser save, but anonymous play is no longer offered. A new account may explicitly copy that save or start fresh; existing cloud saves load under their own user ID. Logout returns to the mandatory login gate. Server-side personal save queries derive identity from the authenticated session; a client account ID is only a mismatch guard, never an authorization source. Offline edits remain account-bound locally. Concurrent cloud revisions require choosing cloud/local, with a local backup before replacement.
 
-Ranking eligibility counts twelve distinct floor-clear events received while logged in, each with at least three accepted answers and zero enemy HP; stars are recalculated from mistakes on the server. Imported guest stars alone never create a ranking entry. Replay can improve a floor's best stars; reset does not erase historical best ranking. Ties retain the first recorded full completion time, then stable server identity order. Ranking is for learning, not typing speed. The game's Python execution and combat remain client-side; event shape/identity checks are not a competitive anti-cheat verifier.
+Ranking begins after an authenticated, named learner starts a hero. Stars come from distinct authenticated floor-clear receipts, each with at least three accepted answers and zero enemy HP; server recalculates grades from mistakes. Imported guest stars do not rank. Keep per-run clears and the player's best run: reset never mixes an old receipt into the new run or erases an earlier ranking. Order stars descending, completed first on equal stars, completed duration ascending (NULL last), floor count descending, completion date/stable identity as a final deterministic tie. Completion duration is seconds of visible authenticated map/battle time through the clear that establishes that score, including reading/writing/preparation, excluding hidden pages and ranking/login/intro. No answer deadline. A new full run can improve an equal-star completion time; one replayed floor cannot replace a full-run time. Legacy records remain untimed, never fabricated as zero. The client clock and combat are not a competitive anti-cheat verifier.
 
 Account creation/login/logout, cloud load/update, nickname update and real ranking states require browser and API tests. Save queue retry/lost-ack/conflict tests live in `cloud-save.test.mjs`; the existing gameplay suites remain required.
 
@@ -41,3 +41,8 @@ Run feedback is result-driven, not click-driven: success requires Python/action/
 ## v1.18 identity and scene music
 
 Brand geometry is owned by assets/brand and brand.css, reused across the header, welcome, guild and favicon. Existing home navigation and mandatory login remain canonical. The welcome music button and header toggle share game.js toggleAudio; same-scene hero changes must not restart a song, scene changes must leave one player, mute must retire it, and stale previous-media callbacks cannot revive a track. audio-engine.js remains the sole music owner. Verification: music-engine.test.mjs and tools/qa-menu-music.html, plus actual welcome/map transitions and a narrow logo layout check. Composer/license/source notices are available through the footer's เครดิตดนตรี link.
+
+
+## Live ranking v1.19
+
+`ranking-live.js` owns single-flight five-second polling. learners.js owns visible page lifecycle, last-updated/offline labels and stable row rendering; retain last successful data on failure, no loading flash per poll, ignore late responses after departure, suspend hidden polling and refresh on return. Native pagination remains 20/page and clamped. `play-clock.js` owns active time and legacy normalization; game.js samples time on visibility/transitions and persists every 15 seconds only at complete turns. Cloud queue keeps immutable receipt run/time through retries and resets. `server/ranking-migration.sql` adds RLS-protected run/clear tables and ranking fields; migrate atomically with tools/migrate-cloud.mjs. QA: ranking.test.mjs, isolated-schema tools/verify-ranking-db.mjs, browser/API checks in QA-v1.19.md.

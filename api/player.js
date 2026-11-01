@@ -14,12 +14,7 @@ export default async function handler(req,res){
     if(req.method==='PATCH'){
       const name=nickname(data.nickname);
       await sql`UPDATE dungeon_players SET nickname=${name} WHERE user_id=${user.id}`;
-      await sql`INSERT INTO dungeon_rankings(user_id,campaign,nickname,class_id,stars)
-        SELECT p.user_id,2,p.nickname,
-          (SELECT class_id FROM dungeon_clears WHERE user_id=p.user_id AND campaign=2 ORDER BY completed_at DESC,floor DESC LIMIT 1),sum(c.stars)::int
-        FROM dungeon_players p JOIN dungeon_clears c ON c.user_id=p.user_id AND c.campaign=2
-        WHERE p.user_id=${user.id} GROUP BY p.user_id,p.nickname HAVING count(*)=12
-        ON CONFLICT(user_id,campaign) DO UPDATE SET nickname=EXCLUDED.nickname,stars=GREATEST(dungeon_rankings.stars,EXCLUDED.stars)`;
+      await sql`SELECT dungeon_refresh_ranking(${user.id})`;
       return json(res,200,{nickname:name});
     }
     if(req.method==='PUT'){
@@ -32,7 +27,7 @@ export default async function handler(req,res){
     }
     const [player]=await sql`SELECT nickname,save,revision,updated_at FROM dungeon_players WHERE user_id=${user.id}`;
     const clears=await sql`SELECT floor,stars FROM dungeon_clears WHERE user_id=${user.id} AND campaign=2 ORDER BY floor`;
-    const [best]=await sql`SELECT stars,completed_at,class_id FROM dungeon_rankings WHERE user_id=${user.id} AND campaign=2`;
+    const [best]=await sql`SELECT stars,completed_at,class_id,floors_cleared,duration_ms FROM dungeon_rankings WHERE user_id=${user.id} AND campaign=2`;
     json(res,200,{accountId:user.id,...player,revision:Number(player.revision),rankedFloors:clears,best:best||null});
   }catch(error){handleError(res,error);}
 }

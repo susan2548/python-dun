@@ -13,9 +13,9 @@ http.createServer(async(req,res)=>{
    if(!['auth','player','ranking'].includes(name)){res.writeHead(404).end();return;}
    if(name==='ranking'&&process.env.DUNGEON_RANKING_QA==='1'){
      const names=['QA ผู้พิชิตแห่งประตูหิน','QA อัศวินแสงตะเกียง','QA พ่อมดห้องสมุด','QA นักเดินทาง'];
-     const all=Array.from({length:24},(_,i)=>({rank:i+1,nickname:names[i]||'QA ผู้เรียนลำดับ '+(i+1),class_id:['adventurer','knight','wizard'][i%3],stars:36-Math.min(24,i),completed_at:'2026-11-01T07:00:00Z'}));
+     const all=Array.from({length:24},(_,i)=>({rank:i+1,nickname:names[i]||'QA ผู้เรียนลำดับ '+(i+1),class_id:['adventurer','knight','wizard'][i%3],stars:36-Math.min(24,i),floors_cleared:i<3?12:Math.min(11,12-Math.floor(i/3)),duration_ms:i===2?null:i<3?(i+1)*900000:null,completed_at:i<3?'2026-11-01T07:00:00Z':null}));
      const page=Math.min(2,Math.max(1,Number(url.searchParams.get('page'))||1));
-     res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({rows:all.slice((page-1)*20,page*20),total:24,page,pageSize:20}));return;
+     res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({rows:all.slice((page-1)*20,page*20),total:24,page,pageSize:20,generatedAt:new Date().toISOString()}));return;
    }
    const {default:handler}=await import('../api/'+name+'.js');return await handler(req,res);
  }

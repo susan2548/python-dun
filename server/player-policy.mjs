@@ -15,7 +15,10 @@ export function validateSave(value){
   if(value.cleared!==(cleared<0?12:cleared))throw fail(400,'ความคืบหน้าไม่ตรงกับด่านที่ผ่าน');
   if(value.activeBattle){const b=value.activeBattle;if(!Number.isInteger(b.level)||b.level<0||b.level>11||!Number.isFinite(b.hp)||!Number.isFinite(b.mp)||b.hp<0||b.mp<0)throw fail(400,'ข้อมูลการต่อสู้ไม่ถูกต้อง');}
   // Exclude accidental browser/account fields. Identity always comes from the session.
-  const keys=['classId','cleared','stars','campaignVersion','balanceVersion','gold','potions','manaPotions','expedition','activeBattle','attackBonus','hpBonus','questionDecks','runId','shopStock','shopTier'];
+  if(value.runId!==undefined&&!/^[-a-f0-9]{36}$/i.test(value.runId))throw fail(400,'หมายเลขรอบไม่ถูกต้อง');
+  if(value.playTimeMs!==undefined&&(!Number.isSafeInteger(value.playTimeMs)||value.playTimeMs<0||value.playTimeMs>315360000000))throw fail(400,'เวลาเล่นไม่ถูกต้อง');
+  if(value.timingVersion!==undefined&&![0,1].includes(value.timingVersion))throw fail(400,'รุ่นเวลาไม่ถูกต้อง');
+  const keys=['classId','cleared','stars','campaignVersion','balanceVersion','gold','potions','manaPotions','expedition','activeBattle','attackBonus','hpBonus','questionDecks','runId','shopStock','shopTier','playTimeMs','timingVersion'];
   return Object.fromEntries(keys.filter(k=>value[k]!==undefined).map(k=>[k,value[k]]));
 }
 export function validateClears(values){
@@ -25,6 +28,8 @@ export function validateClears(values){
     const stars=v.mistakes===0?3:v.mistakes<=2?2:1;
     // A queued victory precedes a possible New Game snapshot. Its historical
     // grade remains valid even when the current run's stars have been reset.
-    return {id:v.id,floor:v.floor,classId:v.classId,stars,answers:v.answers,mistakes:v.mistakes};
+    if(v.runId!==undefined&&!/^[-a-f0-9]{36}$/i.test(v.runId))throw fail(400,'รอบของผลการเล่นไม่ถูกต้อง');
+    if(v.elapsedMs!==undefined&&(!Number.isSafeInteger(v.elapsedMs)||v.elapsedMs<0||v.elapsedMs>315360000000))throw fail(400,'เวลาของผลการเล่นไม่ถูกต้อง');
+    return {id:v.id,floor:v.floor,classId:v.classId,stars,answers:v.answers,mistakes:v.mistakes,...(v.runId?{runId:v.runId,elapsedMs:v.elapsedMs??0,timed:v.timed===true&&v.elapsedMs>0}:{})};
   });
 }
