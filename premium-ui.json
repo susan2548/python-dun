@@ -6,5 +6,5 @@
   "requiredCapabilities": ["Form", "Scrollbar", "Toast", "CRUD"],
   "requiredCommands": ["unit", "build"],
   "commands": {"unit":"npm test","build":"npm run build"},
-  "evidence": {"crudFullFlow":"QA-v1.20.md","failurePaths":"ranking.test.mjs"}
+  "evidence": {"crudFullFlow":"QA-v1.21.md","failurePaths":"music-engine.test.mjs"}
 }

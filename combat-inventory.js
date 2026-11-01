@@ -1,5 +1,5 @@
 import {POTION_HP,POTION_MP} from './tactical-engine.js?v=4';
-import {skillIcon} from './combat-cinema.js?v=9';
+import {skillIcon} from './combat-cinema.js?v=10';
 // UI disclosure only: consumption and turn resolution remain in game.js usePotion.
 export function combatInventory({save,battle,open=false}){
  const total=save.potions+save.manaPotions,locked=battle.busy||battle.finished;

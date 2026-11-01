@@ -6,23 +6,24 @@ import {showTurnBanner} from './turn-banner.js?v=1';
 import {
   currentTrackName,
   playSfx,
-  setMuted,
   switchTrack,
-} from "./audio-engine.js?v=5";
+} from "./audio-engine.js?v=6";
 import { mountSpriteMotion } from "./sprite-motion.js?v=8";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=5";
-import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=9";
-import {preloadCombatAudio,playBattleVoice,playRunFeedback,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=6';
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=10";
+import {preloadCombatAudio,playBattleVoice,playRunFeedback,enemyVoice} from './combat-audio.js?v=7';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=4";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=8";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=9";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=3";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
 import {learner,mountLearners} from './learners.js?v=4';
 import {ActivePlayClock,normalizeTiming} from './play-clock.js?v=1';
-import {combatInventory} from './combat-inventory.js?v=1';
+import {combatInventory} from './combat-inventory.js?v=2';
+import {openAudioSettings} from './audio-settings.js?v=1';
+import {getAudioSettings,subscribeAudioSettings} from './audio-preferences.js?v=1';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -62,7 +63,6 @@ let screen = "intro",
   battle = null,
   selected = "adventurer",
   modal = null,
-  muted = true,
   worker = null,
   workerId = 0,
   workerPending = new Map();
@@ -98,7 +98,6 @@ function updateBar() {
     screen === "battle" && battle
       ? `FLOOR ${String(battle.level + 1).padStart(2, "0")} / ${String(LEVELS.length).padStart(2,"0")}`
       : "CODE • CONQUER • LEARN";
-  if (!muted) $("#soundBtn").title = `ปิดเสียง • ${currentTrackName()}`;
   if(screen==='map' && save.classId && $('.expedition-hub'))updateExpeditionVitals({save,vitals:getVitals(),hero:CLASSES[save.classId]});
 }
 function toast(message) {
@@ -149,7 +148,7 @@ function runPython(code, challenge, skillName) {
 function renderIntro() {
   if(!learner.user)return learner.showGate();
   screen='intro'; window.scrollTo(0,0);updateBar();
-  renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,musicTitle:currentTrackName(),onToggleMusic:toggleAudio,
+  renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,onAudioSettings:showSoundSettings,
     onSelect:id=>{if(save.activeBattle&&id!==save.classId)return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');selected=id;renderIntro();},
     onStart:()=>{
       if(!learner.requireLogin())return;
@@ -161,7 +160,7 @@ function renderIntro() {
     }
   });
   learner.refresh();
-  updateWelcomeMusic();
+  updateWelcomeSettings();
 }
 function renderMap() {
   if(!learner.requireLogin())return;
@@ -222,7 +221,7 @@ function showClassPicker() {
   }});
 }
 function showShop() { if(!learner.requireLogin())return; openMerchant({save,showModal,persist}); }
-function showModal(html) {
+function showModal(html,{onClose}={}) {
   closeModal();
   modal = document.createElement("div");
   modal.className = "modal-backdrop";
@@ -230,6 +229,7 @@ function showModal(html) {
   document.body.append(modal);
   const previousFocus=document.activeElement;
   modal.previousFocus=previousFocus;
+  modal.cleanup=onClose;
   modal.onkeydown=e=>{
     if(e.key==='Escape'){e.preventDefault();closeModal();return;}
     if(e.key!=='Tab')return;
@@ -250,6 +250,7 @@ function showModal(html) {
 }
 function closeModal() {
   const previousFocus=modal?.previousFocus;
+  modal?.cleanup?.();
   modal?.remove();
   modal = null;
   $('.app-shell').inert=false;
@@ -364,8 +365,6 @@ function renderBattle(shouldScroll = true) {
   $('.lesson-completion-note').insertAdjacentHTML('afterend',`<p class="question-deck-note">สุ่มจาก ${QUESTION_TEMPLATES.filter(q=>q.floor===battle.level).length} รูปแบบในเรื่องนี้ • ไม่ซ้ำจนกว่าจะครบชุด • เปลี่ยน Action ไม่เปลี่ยนโจทย์</p>`);
   $('.challenge-head span').textContent = '●'.repeat(Math.min(battle.phase,3)) + '○'.repeat(Math.max(0,3-battle.phase));
   $('.battle-intel').insertAdjacentHTML('beforeend', '<div class="tactics-panel"><div id="enemyIntent"></div><p>'+MONSTERS[battle.level].description+'</p><div id="statusLine"></div><small>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนทุกครั้งจนตอบถูก</small></div>');
-  $('.battle-controls').insertAdjacentHTML('beforeend',`<button class="btn ghost small" id="voicesBtn" aria-pressed="${voicesEnabled()}">เสียงตัวละคร: ${voicesEnabled()?'เปิด':'ปิด'}</button>`);
-  $('#voicesBtn').onclick=()=>{setVoicesEnabled(!voicesEnabled());$('#voicesBtn').textContent='เสียงตัวละคร: '+(voicesEnabled()?'เปิด':'ปิด');$('#voicesBtn').setAttribute('aria-pressed',String(voicesEnabled()));toast('เสียงพากย์และเสียงออกแรง: '+(voicesEnabled()?'เปิด (ต้องเปิดเสียงหลักด้วย)':'ปิด'));};
   $('.combat-history').ontoggle = event => { battleHistoryOpen=event.currentTarget.open; if(battleHistoryOpen)$('#battleLog').scrollTop=$('#battleLog').scrollHeight; };
   $('.combat-badge.player').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="heroStatuses"></div>');
   $('.combat-badge.monster').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="enemyStatuses"></div>');
@@ -884,28 +883,17 @@ $("#homeBtn").onclick = () => {
   if(save.classId)selected=save.classId;
   renderIntro();
 };
-function updateWelcomeMusic(){
-  const button=$('#welcomeMusic');if(!button)return;
-  button.setAttribute('aria-pressed',String(!muted));
-  button.querySelector('[data-music-button]').textContent=muted?'เปิดดนตรีหน้าต้อนรับ':'ดนตรีเปิดอยู่ • กดเพื่อปิดเสียง';
+function updateWelcomeSettings(){
+  const state=getAudioSettings(),button=$('#welcomeAudioSettings');
+  if(button)button.querySelector('[data-audio-summary]').textContent=state.enabled?'เสียงรวม '+state.master+'% • ปรับแยกแต่ละหมวดได้':'เปิดเสียงและปรับความดังแต่ละหมวด';
+  $('#settingsBtn').title='ตั้งค่าเสียง'+(state.enabled?' • เสียงรวม '+state.master+'%':' • เสียงเกมปิดอยู่');
 }
-async function toggleAudio(){
-  muted = !muted;
-  await setMuted(muted);
-  $("#soundBtn").textContent = muted ? "♫" : "🔊";
-  $("#soundBtn").setAttribute("aria-pressed", String(!muted));
-  $("#soundBtn").setAttribute(
-    "aria-label",
-    muted ? "เปิดดนตรีและเสียงเอฟเฟกต์" : "ปิดดนตรีและเสียงเอฟเฟกต์",
-  );
-  $("#soundBtn").title = muted
-    ? "เปิดดนตรีและเสียงเอฟเฟกต์"
-    : `ปิดเสียง • ${currentTrackName()}`;
-  toast(muted ? "ปิดเสียงแล้ว" : `เปิดเพลง: ${currentTrackName()}`);
-  if (!muted) {playSfx("ui");if(screen==='battle'){preloadCombatAudio(save.classId);preloadCombatAudio($('.fighter.enemy')?.dataset.kind);}}
-  updateWelcomeMusic();
+function showSoundSettings(){
+  if(screen==='battle'&&battle?.busy)return toast('รอจบเทิร์นนี้ก่อนตั้งค่าเสียง');
+  openAudioSettings({showModal,closeModal,classId:save.classId||selected});
 }
-$("#soundBtn").onclick=toggleAudio;
+$('#settingsBtn').onclick=showSoundSettings;
+subscribeAudioSettings(updateWelcomeSettings);
 mountLearners({
   getSave:()=>save,persist,showModal,closeModal,toast,
   onAuthGate:()=>{if(screen==='battle'&&battle&&!battle.busy)persist();screen='auth';battle=null;codeEditor=null;closeStatusInspector();updateBar();},

@@ -1,8 +1,8 @@
-import {combatAudioRuntime,duckMusic} from './audio-engine.js?v=5';
+import {combatAudioRuntime,duckMusic} from './audio-engine.js?v=6';
+import {getAudioSettings,updateAudioSettings,subscribeAudioSettings,isAudioAudible} from './audio-preferences.js?v=1';
 import {AUDIO_ROOT,VOICE_BANK,ACTOR_VOICES,FX_FILES,RUN_FEEDBACK,soundPlan,pickTake} from './combat-soundbank.js?v=4';
 const cache=new Map(),active=new Set(),lastTake=new Map();
-let voiceSource=null,voiceEpoch=0,sceneEpoch=0,cueEpoch=0,voicesOn=true,lastBark=-Infinity;
-try{voicesOn=localStorage.getItem('dungeon-voices')!=='off';}catch{}
+let voiceSource=null,voiceEpoch=0,sceneEpoch=0,cueEpoch=0,effectsEpoch=0,lastBark=-Infinity,previewEpoch=0,previewSource=null,previewChannel=null;
 const stats={effects:0,voices:0,dropped:0,failures:0,runAccepted:0,runRejected:0};
 const reversedBuffers=new WeakMap();
 export function audioDiagnostics(){return {...stats,active:active.size,cached:cache.size};}
@@ -12,7 +12,7 @@ export async function loadCombatBuffer(id){
  return cache.get(id);
 }
 function playBuffer(b,{gain=.5,rate=1,voice=false,role='hero',delay=0,reverse=false}={}){
- const rt=combatAudioRuntime();if(!rt||!b)return null;
+ const channel=voice?'voices':'effects',rt=combatAudioRuntime(channel);if(!rt||!b||!isAudioAudible(channel))return null;
  // Keep short tails, cap effect overlap, and keep speech in one separate slot.
  const fx=[...active].filter(s=>s!==voiceSource);if(!voice&&fx.length>=8){try{fx[0].stop();}catch{}}
  const c=rt.context,s=c.createBufferSource(),g=c.createGain();
@@ -23,21 +23,36 @@ function playBuffer(b,{gain=.5,rate=1,voice=false,role='hero',delay=0,reverse=fa
  active.add(s);if(voice)voiceSource=s;s.start(c.currentTime+delay);return s;
 }
 export function stopBattleVoice(){voiceEpoch++;if(voiceSource){try{voiceSource.stop();}catch{}voiceSource=null;}document.querySelector('.battle-voice-caption')?.remove();}
-function stopAll(){sceneEpoch++;cueEpoch++;stopBattleVoice();for(const s of active){try{s.stop();}catch{}}active.clear();}
+function stopAll(){sceneEpoch++;cueEpoch++;stopAudioPreview();stopBattleVoice();for(const s of active){try{s.stop();}catch{}}active.clear();}
 window.addEventListener('dungeon-audio-state',e=>{if(e.detail.muted)stopAll();});
 window.addEventListener('dungeon-audio-scene',stopAll);
-export function voicesEnabled(){return voicesOn;}
-export function setVoicesEnabled(value){voicesOn=Boolean(value);try{localStorage.setItem('dungeon-voices',value?'on':'off');}catch{}if(!value)stopBattleVoice();}
+export function voicesEnabled(){const s=getAudioSettings();return s.voicesOn&&s.voices>0;}
+export function setVoicesEnabled(value){updateAudioSettings({voicesOn:Boolean(value)});}
+subscribeAudioSettings((state,previous)=>{
+ if(!state.enabled||state.master===0){stopAll();return;}
+ if((previous.voicesOn&&!state.voicesOn)||(previous.voices>0&&state.voices===0)){if(previewChannel==='voices')stopAudioPreview();stopBattleVoice();}
+ if((previous.effectsOn&&!state.effectsOn)||(previous.effects>0&&state.effects===0)){effectsEpoch++;cueEpoch++;if(previewChannel==='effects')stopAudioPreview();for(const source of active)if(source!==voiceSource){try{source.stop();}catch{}}}
+});
+export function stopAudioPreview(){previewEpoch++;previewChannel=null;if(previewSource){try{previewSource.stop();}catch{}previewSource=null;}}
+export async function playAudioPreview(channel,classId='adventurer'){
+ stopAudioPreview();if(!isAudioAudible(channel)||!combatAudioRuntime())return false;
+ previewChannel=channel;
+ const epoch=previewEpoch,voice=channel==='voices',entry=VOICE_BANK['attack_'+classId]||VOICE_BANK.attack_adventurer;
+ const b=await loadCombatBuffer(voice?entry.pool[0]:'charge');
+ if(epoch!==previewEpoch||!isAudioAudible(channel)||!b)return false;
+ if(voice){stopBattleVoice();duckMusic(b.duration+.1);}
+ previewSource=playBuffer(b,{gain:voice?(entry.gain??.65):.44,voice,rate:1});return !!previewSource;
+}
 export async function preloadCombatAudio(kind){
  if(!combatAudioRuntime())return;
  const speech=(ACTOR_VOICES[kind]||[]).flatMap(key=>VOICE_BANK[key].pool);
  await Promise.all([...new Set([...FX_FILES,...speech])].map(loadCombatBuffer));
 }
 export async function playBattleVoice(id,role='hero',{chance=1}={}){
- const entry=VOICE_BANK[id];if(!entry||!voicesOn||!combatAudioRuntime()||Math.random()>chance)return;
+ const entry=VOICE_BANK[id];if(!entry||!voicesEnabled()||!isAudioAudible('voices')||!combatAudioRuntime()||Math.random()>chance)return;
  const bark=id.startsWith('attack_');if(bark&&performance.now()-lastBark<850)return;
  stopBattleVoice();const epoch=voiceEpoch,requested=performance.now(),take=pickTake(entry.pool,lastTake.get(id));lastTake.set(id,take);
- const b=await loadCombatBuffer(take);if(epoch!==voiceEpoch||!voicesOn||!combatAudioRuntime()||!b)return;
+ const b=await loadCombatBuffer(take);if(epoch!==voiceEpoch||!voicesEnabled()||!isAudioAudible('voices')||!combatAudioRuntime()||!b)return;
  if(performance.now()-requested>600){stats.dropped++;return;}
  const rate=entry.rate||1;
  // Brief normal efforts sit under the mix; only voiced skill/utility calls
@@ -53,10 +68,10 @@ export async function playBattleVoice(id,role='hero',{chance=1}={}){
 // Validation owns this cue: never celebrate before Python, action mode and MP
 // checks pass. These recorded effects bypass the separate character-voice switch.
 export async function playRunFeedback(accepted){
- if(!combatAudioRuntime())return;
- const epoch=sceneEpoch,requested=performance.now(),plan=RUN_FEEDBACK[accepted?'accepted':'rejected'];
+ if(!combatAudioRuntime()||!isAudioAudible('effects'))return;
+ const epoch=sceneEpoch,audioEpoch=effectsEpoch,requested=performance.now(),plan=RUN_FEEDBACK[accepted?'accepted':'rejected'];
  const buffers=await Promise.all(plan.map(l=>loadCombatBuffer(l.id)));
- if(epoch!==sceneEpoch||!combatAudioRuntime()||performance.now()-requested>500)return;
+ if(epoch!==sceneEpoch||audioEpoch!==effectsEpoch||!combatAudioRuntime()||!isAudioAudible('effects')||performance.now()-requested>500)return;
  let duration=0,played=false;
  plan.forEach((layer,i)=>{const b=buffers[i];if(!b)return;playBuffer(b,layer);stats.effects++;played=true;duration=Math.max(duration,layer.delay+b.duration/layer.rate);});
  if(played){stats[accepted?'runAccepted':'runRejected']++;await new Promise(resolve=>setTimeout(resolve,Math.min(1100,duration*1000+30)));}
@@ -66,7 +81,7 @@ export function enemyVoice(kind,name){
 }
 export function combatCue(kind,variant,stage,options={}){
  if(stage==='windup'||stage==='cutin')cueEpoch++;
- if(!combatAudioRuntime())return;
+ if(!combatAudioRuntime()||!isAudioAudible('effects'))return;
  const epoch=sceneEpoch,cue=cueEpoch,requested=performance.now();
  for(const layer of soundPlan(kind,variant,stage,options)){
   const key=layer.pool.join('/'),id=pickTake(layer.pool,lastTake.get(key));lastTake.set(key,id);

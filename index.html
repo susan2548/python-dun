@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="./monster-effects.css?v=1" />
     <link rel="stylesheet" href="./learners.css?v=3" />
     <link rel="stylesheet" href="./brand.css?v=1" />
+    <link rel="stylesheet" href="./audio-settings.css?v=1" />
   </head>
   <body class="signed-out">
     <div class="app-shell">
@@ -39,25 +40,25 @@
           <span id="chapterTag" class="chapter-tag">CODE • CONQUER • LEARN</span
           ><span id="wallet" class="wallet" title="เหรียญทอง • ใช้ซื้อของและพักโรงแรม"><img class="coin-icon" src="./assets/icons/coin.svg" alt=""> 0 เหรียญ</span
           ><button
-            id="soundBtn"
+            id="settingsBtn"
             class="icon-btn"
-            title="เปิดดนตรีและเสียงเอฟเฟกต์"
-            aria-label="เปิดดนตรีและเสียงเอฟเฟกต์"
-            aria-pressed="false"
+            title="ตั้งค่าเสียง"
+            aria-label="ตั้งค่าเสียง"
+            aria-haspopup="dialog"
           >
-            ♫
+            <img src="./assets/icons/settings.svg" width="28" height="28" alt="">
           </button>
         </div>
       </header>
       <main id="app" aria-live="polite"></main>
       <footer class="footer">
-        <span>PYTHON DUNGEON <em>v1.20</em></span
+        <span>PYTHON DUNGEON <em>v1.21</em></span
         ><span>เขียนโค้ดจริง • เรียนรู้ทีละชั้น • พิชิตบอส</span>
         <a href="./assets/audio-v14/CREDITS.txt" target="_blank" rel="noopener">เครดิตเสียง</a>
         <a href="./assets/audio/MENU-MUSIC-CREDITS.txt" target="_blank" rel="noopener">เครดิตดนตรี</a>
       </footer>
     </div>
     <div id="toast" class="toast" role="status"></div>
-    <script type="module" src="./game.js?v=20"></script>
+    <script type="module" src="./game.js?v=21"></script>
   </body>
 </html>

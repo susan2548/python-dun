@@ -1,3 +1,4 @@
+import {getAudioSettings,updateAudioSettings,subscribeAudioSettings,channelGain,isAudioAudible} from './audio-preferences.js?v=1';
 const TRACKS = {
   intro: {
     name: "เสียงสะท้อนจากดันเจี้ยน",
@@ -77,7 +78,9 @@ const TRACKS = {
 let context;
 let master;
 let musicBus;
+let musicOutput;
 let sfxBus;
+let voiceBus;
 let muted = true;
 let trackKey = "intro";
 let step = 0;
@@ -99,21 +102,37 @@ let mediaEpoch=0;
 let duckUntil=0;
 let duckTimer;
 let recordingFade;
-export function combatAudioRuntime() {
+let fadeProgress=1;
+export function combatAudioRuntime(channel='effects') {
   if(muted)return null;
   ensureAudio();context.resume().catch(()=>{});
-  return {context,destination:sfxBus};
+  return {context,destination:channel==='voices'?voiceBus:sfxBus};
 }
+function applyLevels(){
+  if(recording)recording.volume=(.06+((performance.now() < duckUntil ? .14 : .44)-.06)*fadeProgress)*channelGain('master')*channelGain('music');
+  if(!context)return;
+  master.gain.setTargetAtTime(.7*channelGain('master'),context.currentTime,.025);
+  musicBus.gain.setTargetAtTime(performance.now() < duckUntil ? .12 : trackKey.startsWith('floor') ? .6 : .34,context.currentTime,.04);
+  musicOutput.gain.setTargetAtTime(channelGain('music'),context.currentTime,.025);
+  sfxBus.gain.setTargetAtTime(.7*channelGain('effects'),context.currentTime,.025);
+  voiceBus.gain.setTargetAtTime(.7*channelGain('voices'),context.currentTime,.025);
+}
+subscribeAudioSettings(state=>{
+  if(!state.enabled){muted=true;clearTimeout(timer);stopRecording();if(context)applyLevels();window.dispatchEvent(new CustomEvent('dungeon-audio-state',{detail:{muted:true}}));}
+  else applyLevels();
+});
+// A remembered preference starts only after a real gesture, respecting autoplay.
+if(typeof window!=='undefined')for(const event of ['pointerdown','keydown'])window.addEventListener(event,()=>{
+  if(getAudioSettings().enabled&&muted)activateAudio().catch(()=>{});
+},{capture:true});
 export function duckMusic(seconds=1.8) {
   if(muted)return;
   duckUntil=Math.max(duckUntil,performance.now()+seconds*1000);
-  if(recording)recording.volume=.14;
-  if(musicBus&&context)musicBus.gain.setTargetAtTime(.12,context.currentTime,.03);
+  applyLevels();
   clearTimeout(duckTimer);
   duckTimer=setTimeout(()=>{
     if(performance.now()+20<duckUntil)return;
-    if(recording)recording.volume=.44;
-    if(musicBus&&context)musicBus.gain.setTargetAtTime(.34,context.currentTime,.15);
+    applyLevels();
   },Math.max(0,duckUntil-performance.now())+30);
 }
 function stopRecording() {
@@ -128,21 +147,21 @@ function startRecording() {
   const epoch=mediaEpoch;
   recording=new Audio('./assets/audio/'+track[0]);
   recording.id='dungeonMusic';recording.hidden=true;recording.dataset.track=trackKey;
-  recording.loop=true; recording.volume=.44; recording.preload='auto';
+  recording.loop=true;fadeProgress=1;recording.volume=0; recording.preload='auto';
   document.body.append(recording);
   if(trackKey==='intro'||trackKey==='map'){
-    recording.volume=.06;let faded=false;
+    fadeProgress=0;let faded=false;
     recording.onplaying=()=>{
       if(faded||epoch!==mediaEpoch)return;faded=true;const started=performance.now();
       const fadeId=setInterval(()=>{
         if(epoch!==mediaEpoch||!recording){clearInterval(fadeId);return;}
-        const progress=Math.min(1,(performance.now()-started)/450),target=performance.now() < duckUntil ? .14 : .44;
-        recording.volume=.06+(target-.06)*progress;
+        const progress=Math.min(1,(performance.now()-started)/450);fadeProgress=progress;applyLevels();
         if(progress===1)clearInterval(fadeId);
       },30);
       recordingFade=fadeId;
     };
   }
+  applyLevels();
   // Retain synthesized battle audio only as a network-error fallback.
   recording.onerror=()=>{if(epoch===mediaEpoch&&!muted) {nextStepTime=context.currentTime+.05;tick();}};
   recording.play().catch(()=>{});
@@ -153,12 +172,18 @@ function ensureAudio() {
   context = new (window.AudioContext || window.webkitAudioContext)();
   master = context.createGain();
   musicBus = context.createGain();
+  musicOutput = context.createGain();
   sfxBus = context.createGain();
-  master.gain.value = 0.7;
-  musicBus.gain.value = 0.34;
-  sfxBus.gain.value = 0.7;
-  musicBus.connect(master);
+  voiceBus = context.createGain();
+  master.gain.value = .7*channelGain('master');
+  musicBus.gain.value = .34;
+  musicOutput.gain.value = channelGain('music');
+  sfxBus.gain.value = .7*channelGain('effects');
+  voiceBus.gain.value = .7*channelGain('voices');
+  musicBus.connect(musicOutput);
+  musicOutput.connect(master);
   sfxBus.connect(master);
+  voiceBus.connect(master);
   master.connect(context.destination);
   return context;
 }
@@ -294,7 +319,7 @@ function restartMusic() {
     previous.gain.setTargetAtTime(.0001, context.currentTime, .04);
     musicBus = context.createGain();
     musicBus.gain.value = trackKey.startsWith('floor') ? .6 : .34;
-    musicBus.connect(master);
+    musicBus.connect(musicOutput);
     setTimeout(() => previous.disconnect(), 1600);
     nextStepTime = context.currentTime + .05;
   }
@@ -302,20 +327,16 @@ function restartMusic() {
   else {stopRecording();if(!muted) tick();}
 }
 
+export async function activateAudio(){
+  if(!getAudioSettings().enabled)return false;
+  muted=false;ensureAudio();applyLevels();
+  try{await context.resume();}catch(error){muted=true;throw error;}
+  if(muted||!getAudioSettings().enabled)return false;
+  if(!recording)restartMusic();return true;
+}
 export async function setMuted(value) {
-  muted = value;
-  window.dispatchEvent(new CustomEvent('dungeon-audio-state',{detail:{muted}}));
-  if (!muted) {
-    ensureAudio();
-    await context.resume();
-    restartMusic();
-  } else {
-    clearTimeout(timer);
-    stopRecording();
-    if (context) master.gain.setTargetAtTime(0.0001, context.currentTime, 0.05);
-  }
-  if (context && !muted)
-    master.gain.setTargetAtTime(0.7, context.currentTime, 0.05);
+  updateAudioSettings({enabled:!value});
+  if(!value)await activateAudio();
 }
 
 export function switchTrack(key) {
@@ -331,7 +352,7 @@ export function currentTrackName() {
 }
 
 export function playSfx(kind) {
-  if (muted) return;
+  if (muted||!isAudioAudible('effects')) return;
   ensureAudio();
   const now = context.currentTime;
   const sweep = (from, to, duration, wave = "square", volume = 0.09) => {
