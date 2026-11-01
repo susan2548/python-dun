@@ -1,0 +1,9 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><title>Run voice playback QA</title><base href="/"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="combat-polish.css"><style>body{padding:25px}button{font:inherit;padding:15px;margin:8px}#scene{height:140px;position:relative;border:1px solid #799;padding:20px}pre{white-space:pre-wrap}</style></head><body><h1>ตรวจเสียง Run จากไฟล์จริง</h1><button id="run">เล่นเสียง Run ครบสามอาชีพ</button><button id="mute">ตรวจปิดเสียงหลัก</button><button id="voicesOff">ตรวจปิดเสียงตัวละคร</button><div id="scene"></div><pre id="report"></pre>
+<script type="module">
+import {setMuted} from './audio-engine.js?v=4';
+import {preloadCombatAudio,playRunVoice,audioDiagnostics,setVoicesEnabled} from './combat-audio.js?v=4';
+const $=s=>document.querySelector(s);
+$('#run').onclick=async()=>{const results=[];$('#run').disabled=true;try{await setMuted(false);setVoicesEnabled(true);for(const kind of ['adventurer','knight','wizard']){await preloadCombatAudio(kind);const before=audioDiagnostics(),start=performance.now();await playRunVoice(kind);const after=audioDiagnostics();results.push({kind,voiceDelta:after.voices-before.voices,failures:after.failures,elapsed:Math.round(performance.now()-start),pass:after.voices-before.voices===1&&after.failures===0});$('#report').textContent=JSON.stringify(results,null,2);}}finally{$('#run').disabled=false;}};
+$('#mute').onclick=async()=>{await setMuted(true);const before=audioDiagnostics();await playRunVoice('knight');$('#report').textContent=JSON.stringify({muted:true,pass:audioDiagnostics().voices===before.voices});};
+$('#voicesOff').onclick=async()=>{await setMuted(false);setVoicesEnabled(false);const before=audioDiagnostics();await playRunVoice('wizard');$('#report').textContent=JSON.stringify({voicesOff:true,pass:audioDiagnostics().voices===before.voices});setVoicesEnabled(true);};
+</script></body></html>

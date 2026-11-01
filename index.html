@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="./turn-flow.css?v=1" />
     <link rel="stylesheet" href="./campaign.css?v=1" />
     <link rel="stylesheet" href="./monster-effects.css?v=1" />
+    <link rel="stylesheet" href="./learners.css?v=1" />
   </head>
   <body>
     <div class="app-shell">
@@ -35,6 +36,8 @@
           ><span>PYTHON<span class="brand-accent">DUNGEON</span></span>
         </button>
         <div class="topbar-right">
+          <button class="btn ghost small" id="rankingBtn" disabled>🏆 อันดับ</button>
+          <div class="account-header"><button class="btn ghost small" id="accountBtn" disabled>เข้าสู่ระบบ</button><span id="syncStatus" role="status">กำลังตรวจบัญชี…</span><button id="syncRetry" class="sync-retry" hidden>ลองอีกครั้ง</button></div>
           <span id="chapterTag" class="chapter-tag">CODE • CONQUER • LEARN</span
           ><span id="wallet" class="wallet" title="เหรียญทอง • ใช้ซื้อของและพักโรงแรม"><img class="coin-icon" src="./assets/icons/coin.svg" alt=""> 0 เหรียญ</span
           ><button
@@ -50,12 +53,12 @@
       </header>
       <main id="app" aria-live="polite"></main>
       <footer class="footer">
-        <span>PYTHON DUNGEON <em>v1.15.2</em></span
+        <span>PYTHON DUNGEON <em>v1.16</em></span
         ><span>เขียนโค้ดจริง • เรียนรู้ทีละชั้น • พิชิตบอส</span>
         <a href="./assets/audio-v14/CREDITS.txt" target="_blank" rel="noopener">เครดิตเสียง</a>
       </footer>
     </div>
     <div id="toast" class="toast" role="status"></div>
-    <script type="module" src="./game.js?v=15.2"></script>
+    <script type="module" src="./game.js?v=16"></script>
   </body>
 </html>

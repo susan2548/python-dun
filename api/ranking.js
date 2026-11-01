@@ -1,0 +1,12 @@
+import {db} from '../server/db.mjs';
+import {json,handleError,fail} from '../server/http.mjs';
+export default async function handler(req,res){
+  try{
+    if(req.method!=='GET')throw fail(405,'คำสั่งไม่ถูกต้อง');
+    const page=Math.min(1000,Math.max(1,Number.parseInt(new URL(req.url,'https://local').searchParams.get('page'))||1)),sql=db();
+    const [{total}]=await sql`SELECT count(*)::int AS total FROM dungeon_rankings WHERE campaign=2`;
+    const actualPage=Math.min(page,Math.max(1,Math.ceil(total/20)));
+    const rows=await sql`SELECT nickname,class_id,stars,completed_at,row_number() OVER(ORDER BY stars DESC,completed_at ASC,user_id ASC)::int AS rank FROM dungeon_rankings WHERE campaign=2 ORDER BY stars DESC,completed_at ASC,user_id ASC LIMIT 20 OFFSET ${(actualPage-1)*20}`;
+    res.setHeader('Cache-Control','no-store');json(res,200,{page:actualPage,pageSize:20,total,rows});
+  }catch(error){handleError(res,error);}
+}

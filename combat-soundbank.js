@@ -1,6 +1,9 @@
 // Recorded source takes. Cosmetic variation never consumes the battle RNG.
 export const AUDIO_ROOT='./assets/audio-v14/';
 export const VOICE_BANK={
+ run_adventurer:{pool:['vo-run-adventurer'],caption:'พร้อมลุย!',gain:.68},
+ run_knight:{pool:['vo-run-knight'],caption:'เตรียมพร้อม!',gain:.68},
+ run_wizard:{pool:['vo-run-wizard'],caption:'เริ่มร่ายโค้ด!',gain:.68},
  double_strike:{pool:['vo-rogue-strike'],caption:'ฟันสองจังหวะ'},smoke_blade:{pool:['vo-rogue-ambush'],caption:'คมมีดม่านควัน'},
  shield_bash:{pool:['vo-knight-bash'],caption:'กระแทกโล่'},iron_oath:{pool:['vo-oath'],caption:'คำสัตย์เหล็กกล้า'},
  fireball:{pool:['vo-fire-1','vo-fire-2'],caption:'ลูกไฟเวท'},frost_lance:{pool:['vo-frost-1','vo-frost-2'],caption:'หอกเหมันต์'},
@@ -12,7 +15,7 @@ export const VOICE_BANK={
  attack_zombie:{pool:['vo-zombie-2'],gain:.46},attack_skeleton:{pool:['vo-bone-2'],gain:.43},attack_spider:{pool:['vo-bug-2'],gain:.44},attack_wraith:{pool:['vo-shade-2'],gain:.44},attack_golem:{pool:['vo-orc-3'],rate:.90,gain:.51},attack_necromancer:{pool:['vo-necro-cast'],rate:.93,gain:.43},
 };
 export const ACTOR_VOICES={
- adventurer:['double_strike','smoke_blade','attack_adventurer','guard_adventurer','focus_adventurer'],knight:['shield_bash','iron_oath','attack_knight','guard_knight','focus_knight'],wizard:['fireball','frost_lance','attack_wizard','guard_wizard','focus_wizard'],
+ adventurer:['run_adventurer','double_strike','smoke_blade','attack_adventurer','guard_adventurer','focus_adventurer'],knight:['run_knight','shield_bash','iron_oath','attack_knight','guard_knight','focus_knight'],wizard:['run_wizard','fireball','frost_lance','attack_wizard','guard_wizard','focus_wizard'],
  zombie:['zombie_bite','attack_zombie'],skeleton:['skeleton_shield','skeleton_cleave','attack_skeleton'],spider:['spider_web','attack_spider'],wraith:['wraith_drain','attack_wraith'],golem:['golem_guard','golem_quake','attack_golem'],necromancer:['necro_drain','necro_curse','attack_necromancer'],
 };
 export const NEW_MONSTER_AUDIO={slime:['acid-lunge','acid-fountain','เมือกกัดกร่อน'],mimic:['chest-bite','coin-storm','เหรียญลวงตา'],scarab:['mandible-ram','sandstorm','พายุทรายทอง'],bat:['wing-dive','sonic-cry','คลื่นเสียงกรีดวิญญาณ'],icewolf:['ice-pounce','frost-breath','ลมหายใจเยือกแข็ง'],sentinel:['gear-slash','core-laser','ลำแสงแกนกลาง']};

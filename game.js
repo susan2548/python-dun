@@ -12,14 +12,15 @@ import {
 import { mountSpriteMotion } from "./sprite-motion.js?v=8";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=5";
-import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=6";
-import {preloadCombatAudio,playBattleVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=3';
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=7";
+import {preloadCombatAudio,playBattleVoice,playRunVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=4';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=4";
 import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=6";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=3";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
+import {learner,mountLearners} from './learners.js?v=1';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -41,6 +42,7 @@ const fresh = () => ({
   activeBattle: null,
   attackBonus: 0,
   hpBonus: 0,
+  runId: crypto.randomUUID(),
 });
 let save;
 try {
@@ -67,7 +69,8 @@ function persist() {
     save.expedition = { hp: battle.hp, mp: battle.mp, maxHp: battle.maxHp, maxMp: battle.maxMp };
     save.activeBattle = battle.finished ? null : { ...battle, busy: false, code: "" };
   }
-  localStorage.setItem(STORAGE, JSON.stringify(save));
+  localStorage.setItem(learner.key, JSON.stringify(save));
+  learner.save(save);
   updateBar();
 }
 function updateBar() {
@@ -135,6 +138,7 @@ function renderIntro() {
   renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,
     onSelect:id=>{if(save.activeBattle&&id!==save.classId)return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');selected=id;renderIntro();},
     onStart:()=>{
+      if(!learner.canPlay())return toast('กำลังตรวจบัญชีหรือมีเซฟที่ต้องจัดการ ดูข้อความข้างปุ่มบัญชี');
       if(save.classId&&save.classId!==selected) {
         const old=getVitals(),next=CLASSES[selected];
         save.expedition={hp:Math.ceil(old.hp/old.maxHp*(next.hp+save.hpBonus)),mp:Math.floor(old.mp/old.maxMp*next.mp),maxHp:next.hp+save.hpBonus,maxMp:next.mp};
@@ -142,6 +146,7 @@ function renderIntro() {
       save.classId=selected;persist();beep();renderMap();
     }
   });
+  learner.refresh();
 }
 function renderMap() {
   if(screen==='battle'&&battle)persist();
@@ -172,7 +177,7 @@ function restAtCamp() {
 }
 function showResetPrompt() {
   showModal(
-    '<span class="eyebrow">NEW GAME</span><h2 class="pixel-title">เริ่มผจญภัยใหม่?</h2><p>ความคืบหน้า ดาว เหรียญ และของที่ซื้อในเบราว์เซอร์นี้จะเริ่มใหม่ทั้งหมด</p><div class="modal-actions"><button class="btn" id="confirmReset">ยืนยันเริ่มใหม่</button><button class="btn ghost" data-close>ยกเลิก</button></div>',
+    '<span class="eyebrow">NEW GAME</span><h2 class="pixel-title">เริ่มผจญภัยใหม่?</h2><p>ความคืบหน้า ดาว เหรียญ และของในรอบปัจจุบันจะเริ่มใหม่ทั้งหมด ผลดีที่สุดที่เคยบันทึกในตารางอันดับยังคงอยู่</p><div class="modal-actions"><button class="btn" id="confirmReset">ยืนยันเริ่มใหม่</button><button class="btn ghost" data-close>ยกเลิก</button></div>',
   );
   modal.querySelector('[data-close]')?.focus({preventScroll:true});
   $("#confirmReset").onclick = () => {
@@ -209,12 +214,14 @@ function showModal(html) {
   modal.onkeydown=e=>{
     if(e.key==='Escape'){e.preventDefault();closeModal();return;}
     if(e.key!=='Tab')return;
-    const controls=[...modal.querySelectorAll('button:not(:disabled),a[href],[tabindex="0"]')];
+    const controls=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]')];
     if(!controls.length)return;
     if(e.shiftKey&&document.activeElement===controls[0]){e.preventDefault();controls.at(-1).focus();}
     else if(!e.shiftKey&&document.activeElement===controls.at(-1)){e.preventDefault();controls[0].focus();}
   };
-  modal.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+  const heading=modal.querySelector('h2');if(heading){heading.id||='dialogTitle';modal.querySelector('[role="dialog"]').setAttribute('aria-labelledby',heading.id);}
+  $('.app-shell').inert=true;
+  modal.querySelector('input:not(:disabled),button:not(:disabled)')?.focus({preventScroll:true});
   modal
     .querySelectorAll("[data-close]")
     .forEach((b) => (b.onclick = closeModal));
@@ -226,9 +233,11 @@ function closeModal() {
   const previousFocus=modal?.previousFocus;
   modal?.remove();
   modal = null;
+  $('.app-shell').inert=false;
   if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
 }
 async function startBattle(index) {
+  if(!learner.canPlay())return toast('จัดการเซฟหรือเข้าสู่ระบบอีกครั้งก่อนเล่นต่อ');
   if (!Number.isInteger(index)||index<0||index>=LEVELS.length||(index>save.cleared&&!save.stars[index]&&save.activeBattle?.level!==index)) return;
   closeModal();
   const l = LEVELS[index],
@@ -433,7 +442,7 @@ function checkBattleEnd() {
 }
 async function executeUtilityTurn() {
   battle.busy=true;$('#runBtn').disabled=true;renderCommandMenu();
-  await frameBattle();
+  await Promise.all([frameBattle(),playRunVoice(save.classId)]);
   if(!heroStartTurn())return;
   const command=battle.command;
   consumeFocus(battle.heroStatuses,command);
@@ -662,6 +671,7 @@ async function frameBattle() {
   await wait(850);
 }
 async function executeTurn() {
+  if(!learner.canPlay())return toast('จัดการเซฟหรือเข้าสู่ระบบอีกครั้งก่อนเล่นต่อ');
   if (!battle || battle.busy || battle.finished) return;
   ensureTactics(battle);
   if(['guard','focus'].includes(battle.command))return executeUtilityTurn();
@@ -686,11 +696,11 @@ async function executeTurn() {
   out.textContent = "กำลังรันและตรวจคำตอบ… ครั้งแรกอาจใช้เวลาสักครู่";
   let result;
   try {
-    result = await runPython(
+    [result] = await Promise.all([runPython(
       code,
       battle.level * 3 + battle.phase % 3 + 1,
       normalizeSkill(battle,save.classId).id,
-    );
+    ),playRunVoice(save.classId)]);
   } catch (error) {
     result = { ok: false, error: error.message, technical: true };
   }
@@ -808,6 +818,7 @@ function victory() {
   updateFrontier(save);
   save.gold += gold;
   const nextLevel=nextFloorAfterClear(save,i);
+  learner.recordVictory(battle,save.classId);
   persist();
   playSfx("victory");
   showModal(
@@ -846,6 +857,7 @@ function defeat() {
 $("#homeBtn").onclick = () => {
   if (screen === "battle" && battle?.busy) return toast("รอจบเทิร์นนี้ก่อนครับ");
   if(screen==='battle'&&battle)persist();
+  history.replaceState(null,'',location.pathname+location.search);
   if(save.classId)selected=save.classId;
   renderIntro();
 };
@@ -868,3 +880,18 @@ if (save.classId) {
   selected = save.classId;
   renderIntro();
 } else renderIntro();
+mountLearners({
+  getSave:()=>save,persist,showModal,closeModal,toast,
+  beforeDashboard:()=>{if(screen==='battle'&&battle)persist();},
+  canSwitch:()=>!(screen==='battle'&&battle?.busy),
+  onIdentity:data=>{
+    document.title='PYTHON DUNGEON — โค้ดเพื่อพิชิตดันเจี้ยน';
+    resetWorker();battle=null;codeEditor=null;battleHistoryOpen=false;screen='intro';
+    if(data)migrateCampaign(data);
+    save={...fresh(),...(data||{})};migrateClassBalance(save);
+    selected=save.classId||'adventurer';
+    localStorage.setItem(learner.key,JSON.stringify(save));renderIntro();
+  },
+  onDashboard:()=>{screen='dashboard';battle=null;window.scrollTo(0,0);updateBar();},
+  onReturn:()=>save.classId?renderMap():renderIntro(),
+});

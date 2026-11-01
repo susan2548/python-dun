@@ -1,0 +1,25 @@
+{
+  "name": "python-dungeon",
+  "version": "1.16.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node --env-file=.env.local tools/dev-server.mjs",
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/auth": "0.7.0-beta",
+    "@neondatabase/serverless": "1.2.0",
+    "jose": "6.2.14"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "better-auth": "1.7.14",
+    "@better-auth/core": "1.7.14",
+    "@better-auth/oauth-provider": "1.7.14",
+    "zod": "4.6.6"
+  }
+}

@@ -1,5 +1,5 @@
 import {combatAudioRuntime,duckMusic} from './audio-engine.js?v=4';
-import {AUDIO_ROOT,VOICE_BANK,ACTOR_VOICES,FX_FILES,soundPlan,pickTake} from './combat-soundbank.js?v=2';
+import {AUDIO_ROOT,VOICE_BANK,ACTOR_VOICES,FX_FILES,soundPlan,pickTake} from './combat-soundbank.js?v=3';
 const cache=new Map(),active=new Set(),lastTake=new Map();
 let voiceSource=null,voiceEpoch=0,sceneEpoch=0,cueEpoch=0,voicesOn=true,lastBark=-Infinity;
 try{voicesOn=localStorage.getItem('dungeon-voices')!=='off';}catch{}
@@ -41,10 +41,17 @@ export async function playBattleVoice(id,role='hero',{chance=1}={}){
  // duck music, avoiding a volume pump on every normal sword swing.
  if(entry.caption)duckMusic(b.duration/rate+.10);
  playBuffer(b,{gain:entry.gain??.82,rate,voice:true,role});stats.voices++;lastBark=performance.now();
- if(!entry.caption)return;
+ if(!entry.caption)return b.duration/rate;
  const scene=document.querySelector('#scene');if(!scene)return;
  const caption=document.createElement('span');caption.className='battle-voice-caption voice-'+role;caption.textContent=entry.caption;caption.setAttribute('role','status');scene.append(caption);
  setTimeout(()=>caption.remove(),b.duration/rate*1000+100);
+ return b.duration/rate;
+}
+// A short Run call finishes before the action's own voice. It never queues a
+// late recording or blocks a turn when audio is muted/unavailable.
+export async function playRunVoice(kind){
+ const duration=await playBattleVoice('run_'+kind,'hero');
+ if(duration)await new Promise(resolve=>setTimeout(resolve,Math.min(1200,duration*1000+40)));
 }
 export function enemyVoice(kind,name){
  if(kind==='zombie')return 'zombie_bite';if(kind==='skeleton')return name.includes('โล่')?'skeleton_shield':'skeleton_cleave';if(kind==='spider')return 'spider_web';if(kind==='wraith')return 'wraith_drain';if(kind==='golem')return name.includes('เกราะ')?'golem_guard':'golem_quake';return name.includes('ดูด')?'necro_drain':'necro_curse';

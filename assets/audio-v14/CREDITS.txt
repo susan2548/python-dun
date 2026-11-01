@@ -1,5 +1,11 @@
 PYTHON DUNGEON - recorded combat audio v1.15
 
+v1.16 adds three class-specific Run button calls (89 clips total).
+Adventurer / wizard: John Carroll Warrior / Mage packs, unused here1/here2 takes.
+Knight: Tim Rockk, game voice, g_get_ready.wav, CC0 1.0.
+https://opengameart.org/content/game-voice
+Each is a separate original human recording, with trim/gain/fades only.
+
 v1.15 adds 24 previously unused source recordings for slime, mimic, scarab,
 bat, ice wolf and clockwork sentinel. Normal and special moves have separate
 vocal/effect takes. Sources: rubberduck's 80 CC0 Creature SFX / RPG SFX and

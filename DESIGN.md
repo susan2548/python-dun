@@ -113,6 +113,16 @@ The new atlas is a three-column/four-row snake with twelve room markers and a si
 
 New slime, mimic, scarab, bat, ice wolf and clockwork sentinel use six distinct authored 12-frame sheets in `assets/animation-v15`, with a shared scale per actor. They have different body shapes, idle periods, root paths (surge, hop, ram, dive, pounce, gear), ranged effects and status threats. No recolored old monster stands in for a new identity. Battle power growth advances every two rooms; resources persist across all twelve. Rewards fund the existing inn without granting automatic recovery.
 
+## Learner accounts and hall of fame v1.16
+
+The top bar adds a learner-account button, concise save status/recovery and an explicit ranking destination. `learners.js` owns Thai account forms and dashboard views; it reuses the game modal/toast. The modal makes background content inert and traps inputs as well as buttons. Passwords are masked with a show control. Use email/password managed by Neon Auth via the supported same-origin server toolkit. Google is not presented as enabled without its own provider configuration.
+
+`cloud-save.js` owns account-bound retries and revisions. Guest saves retain the original storage key; each signed-in user has a separate local cache and remote database row. New accounts choose whether to copy guest progress. No silent cross-account merge. Cloud conflict resolution backs up local state before an explicit choice. Session/auth identity comes from verified server cookies. An expected account ID only prevents writes after another tab changes identity. Never expose credentials, email or internal IDs in ranking responses.
+
+The hall retains dark slate, mint and brass, with a personal journey panel and readable native ranking table. Display four numbered champion places, then 20 rows/page. Only floor-clear events received while logged in count toward the twelve-room eligibility gate; imported stars do not automatically enter rankings. Higher total learning stars rank first, then first full-completion date. Replaying improves personal best; new-game reset retains historical rank. Ranking refresh waits for pending saves, uses actual results and has explicit loading/empty/error states. The table owns horizontal scrolling on phones; the page never overflows. `#ranking?page=N` restores the view on reload.
+
+Run-button calls are three distinct human recordings from John Carroll Warrior/Mage packs and Tim Rockk's game-voice pack. A valid non-empty Run starts its class call during Python checking; utility Run plays the same brief call before the action. The call finishes before attack/skill voices. Empty/disabled clicks do not speak, and both existing mute controls apply.
+
 ## Do's and Don'ts
 
 - A fighter's loading portrait must retire when its animation canvas mounts, including inline background-image declarations. Keep the portrait if atlas loading fails; never render it behind a successfully mounted canvas. Test the composed DOM/CSS surface, not only canvas pixels.

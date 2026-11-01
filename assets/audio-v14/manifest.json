@@ -1,5 +1,5 @@
 {
-  "version": 15,
+  "version": 16,
   "sources": {
     "warrior": {
       "author": "John Carroll",
@@ -54,6 +54,11 @@
     "kenney": {
       "author": "Kenney",
       "url": "https://kenney.nl/assets/impact-sounds",
+      "license": "CC0-1.0"
+    },
+    "tim": {
+      "author": "Tim Rockk",
+      "url": "https://opengameart.org/content/game-voice",
       "license": "CC0-1.0"
     }
   },
@@ -1087,6 +1092,42 @@
       "seconds": 0.8173,
       "peak": 0.7585,
       "sourceTrimStart": 0.0,
+      "processing": "trim silence, gain/headroom, high-pass, limiter without makeup gain, 4ms/65ms fades",
+      "syntheticSpeech": false
+    },
+    "vo-run-adventurer": {
+      "file": "vo-run-adventurer.mp3",
+      "kind": "voice",
+      "pack": "warrior",
+      "sourceFile": "here1.wav",
+      "sourceSha256": "4f716af079cd7491804f5bf317a434b6c1da8cc400295a3b0410b054b1bc012d",
+      "seconds": 0.4924,
+      "peak": 0.7099,
+      "sourceTrimStart": 0.0854,
+      "processing": "trim silence, gain/headroom, high-pass, limiter without makeup gain, 4ms/65ms fades",
+      "syntheticSpeech": false
+    },
+    "vo-run-knight": {
+      "file": "vo-run-knight.mp3",
+      "kind": "voice",
+      "pack": "tim",
+      "sourceFile": "tim-get-ready.wav",
+      "sourceSha256": "f0cf013f9bb6ca76e975982639e665f8c14e6dfe176c2f86e32c398613a3e321",
+      "seconds": 1.0946,
+      "peak": 0.7021,
+      "sourceTrimStart": 0.0718,
+      "processing": "trim silence, gain/headroom, high-pass, limiter without makeup gain, 4ms/65ms fades",
+      "syntheticSpeech": false
+    },
+    "vo-run-wizard": {
+      "file": "vo-run-wizard.mp3",
+      "kind": "voice",
+      "pack": "mage",
+      "sourceFile": "here2.wav",
+      "sourceSha256": "5333e82dfb71c50ba29940b1cfd7c5043df0972a2ceaa0a0fc63ad9c2409601d",
+      "seconds": 0.5973,
+      "peak": 0.7258,
+      "sourceTrimStart": 0.2014,
       "processing": "trim silence, gain/headroom, high-pass, limiter without makeup gain, 4ms/65ms fades",
       "syntheticSpeech": false
     }

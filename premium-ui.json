@@ -1,0 +1,10 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["public"],
+  "locale": "th-TH",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Form", "Scrollbar", "Toast", "CRUD"],
+  "requiredCommands": ["unit", "build"],
+  "commands": {"unit":"npm test","build":"npm run build"},
+  "evidence": {"crudFullFlow":"QA-v1.16.md","failurePaths":"cloud-save.test.mjs"}
+}
