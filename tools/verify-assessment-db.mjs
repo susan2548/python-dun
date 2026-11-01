@@ -1,0 +1,48 @@
+import {readFile} from 'node:fs/promises';
+import {randomUUID,randomBytes} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {db} from '../server/db.mjs';
+import {sqlStatements} from './sql-statements.mjs';
+import {FORMS,gradeAnswers} from '../server/assessment-bank.mjs';
+const sql=db(),schema='dungeon_qa_assessment_'+randomBytes(6).toString('hex');
+if(!/^dungeon_qa_assessment_[a-f0-9]{12}$/.test(schema))throw Error('Unsafe QA schema');
+const names=['assessment_teachers','assessment_classes','assessment_enrollments','assessment_attempts','assessment_start','assessment_save','assessment_submit','dungeon_clears'];
+const query=(text,params=[])=>sql.query(text.replace(new RegExp('\\b('+names.join('|')+')\\b','g'),name=>schema+'.'+name),params);
+const classId=randomUUID(),otherClass=randomUUID();let checks=0;
+const preOrder=JSON.stringify(FORMS.pre.map(q=>q.id)),postOrder=JSON.stringify(FORMS.post.map(q=>q.id));
+const start=async(uid,phase,c=classId)=>(await query('SELECT assessment_start($1,$2,$3,$4,$5::jsonb,$6::jsonb) result',[uid,c,phase,randomUUID(),phase==='pre'?preOrder:postOrder,'{}']))[0].result;
+const save=async(uid,id,rev,answers,mutation=randomUUID())=>(await query('SELECT assessment_save($1,$2,$3,$4::jsonb,$5) result',[uid,id,rev,JSON.stringify(answers),mutation]))[0].result;
+const submit=async(uid,id,rev,grade)=>(await query('SELECT assessment_submit($1,$2,$3,$4,$5::jsonb) result',[uid,id,rev,randomUUID(),JSON.stringify(grade)]))[0].result;
+const perfect=phase=>Object.fromEntries(FORMS[phase].map(q=>[q.id,q.answer]));
+try{
+ await sql.query('CREATE SCHEMA '+schema);
+ await query('CREATE TABLE dungeon_clears(user_id text,campaign int,floor int,stars int,PRIMARY KEY(user_id,campaign,floor))');
+ const migration=await readFile(new URL('../server/assessment-schema.sql',import.meta.url),'utf8');
+ for(const step of sqlStatements(migration))await query(step);
+ // Applying twice must not alter existing results or learner tables.
+ for(const step of sqlStatements(migration))await query(step);
+ await query("INSERT INTO assessment_teachers(user_id) VALUES('teacher')");
+ await query("INSERT INTO assessment_classes(id,owner_id,name,join_code) VALUES($1,'teacher','QA','QA123456')",[classId]);
+ await query("INSERT INTO assessment_enrollments(class_id,user_id,student_code,full_name) VALUES($1,'student','QA01','QA Learner'),($1,'other','QA02','Other Learner')",[classId]);
+ assert.equal((await start('student','pre')).error,'closed');assert.equal((await start('outsider','pre')).error,'not_enrolled');checks++;
+ await query('UPDATE assessment_classes SET pre_open=true,post_open=true WHERE id=$1',[classId]);
+ assert.equal((await start('student','post')).error,'pre_required');checks++;
+ const concurrent=await Promise.all([start('student','pre'),start('student','pre')]);assert.equal(concurrent[0].id,concurrent[1].id);const pre=concurrent[0].id;checks++;
+ assert.equal((await save('other',pre,0,{})).error,'forbidden');assert.equal((await submit('other',pre,0,gradeAnswers('pre',{}))).error,'forbidden');checks++;
+ const mutation=randomUUID();assert.equal((await save('student',pre,0,{pre02:'end'},mutation)).revision,1);assert.equal((await save('student',pre,0,{pre02:'end'},mutation)).duplicate,true);assert.equal((await save('student',pre,0,{})).error,'conflict');checks++;
+ await query('UPDATE assessment_classes SET pre_open=false WHERE id=$1',[classId]);assert.equal((await start('student','pre')).id,pre);assert.equal((await save('student',pre,1,perfect('pre'))).revision,2);assert.equal((await submit('student',pre,2,gradeAnswers('pre',perfect('pre')))).error,'closed');checks++;
+ await query('UPDATE assessment_classes SET pre_open=true WHERE id=$1',[classId]);
+ assert.equal((await submit('student',pre,1,gradeAnswers('pre',{}))).error,'conflict');
+ await query("INSERT INTO dungeon_clears VALUES('student',2,0,3),('student',2,1,2)");
+ assert.equal((await submit('student',pre,2,gradeAnswers('pre',perfect('pre')))).submitted,true);
+ assert.equal((await submit('student',pre,2,gradeAnswers('pre',{}))).duplicate,true);assert.equal((await save('student',pre,2,{})).error,'submitted');checks++;
+ assert.equal((await start('student','pre')).error,'limit');
+ const post=(await start('student','post')).id;await submit('student',post,0,gradeAnswers('post',{}));
+ assert.equal((await start('student','post')).error,'limit');
+ await query("UPDATE assessment_enrollments SET post_limit=2 WHERE class_id=$1 AND user_id='student'",[classId]);
+ const retake=(await start('student','post')).id;assert.notEqual(retake,post);await save('student',retake,0,perfect('post'));await submit('student',retake,1,gradeAnswers('post',perfect('post')));
+ const results=await query("SELECT score,stars_snapshot FROM assessment_attempts WHERE class_id=$1 AND user_id='student' AND phase='post' ORDER BY attempt_no",[classId]);assert.deepEqual(results.map(r=>r.score),[0,24]);assert.deepEqual(results[0].stars_snapshot,[3,2,0,0,0,0,0,0,0,0,0,0]);checks++;
+ await query("UPDATE dungeon_clears SET stars=3 WHERE user_id='student' AND floor=1");const [snapshot]=await query('SELECT stars_snapshot FROM assessment_attempts WHERE id=$1',[post]);assert.equal(snapshot.stars_snapshot[1],2);checks++;
+ const secured=await sql.query('SELECT count(*)::int n FROM pg_tables WHERE schemaname=$1 AND rowsecurity=true',[schema]);assert.equal(secured[0].n,4);checks++;
+ console.log(JSON.stringify({passed:checks,isolatedSchema:true,checks:['closed/prerequisite','concurrent resume','ownership','idempotent autosave and CAS','closed round retains draft','immutable submission','retake keeps first result','stars snapshot','RLS','rerunnable additive migration']}));
+}finally{await sql.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE');console.log('Removed isolated assessment QA schema.');}

@@ -10,7 +10,7 @@ http.createServer(async(req,res)=>{
  if(url.pathname==='/__qa/mobile'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end('<!doctype html><meta charset="utf-8"><title>390px game QA</title><style>body{background:#0c151b;color:#edf2df;font:16px system-ui;padding:12px}iframe{display:block;width:390px;height:844px;border:2px solid #9be8c2}</style><h1>ตรวจหน้าเกมที่ความกว้าง 390px</h1><iframe title="เกมขนาดมือถือ" id="mobileGame" src="/"></iframe>');return;}
  if(url.pathname.startsWith('/api/')){
    const name=url.pathname.startsWith('/api/auth/')?'auth':url.pathname.slice(5);
-   if(!['auth','player','ranking'].includes(name)){res.writeHead(404).end();return;}
+   if(!['auth','player','ranking','assessment'].includes(name)){res.writeHead(404).end();return;}
    if(name==='ranking'&&process.env.DUNGEON_RANKING_QA==='1'){
      const names=['QA ผู้พิชิตแห่งประตูหิน','QA อัศวินแสงตะเกียง','QA พ่อมดห้องสมุด','QA นักเดินทาง'];
      const all=Array.from({length:24},(_,i)=>({rank:i+1,nickname:names[i]||'QA ผู้เรียนลำดับ '+(i+1),class_id:['adventurer','knight','wizard'][i%3],stars:36-Math.min(24,i),floors_cleared:i<3?12:Math.min(11,12-Math.floor(i/3)),duration_ms:i===2?null:i<3?(i+1)*900000:null,completed_at:i<3?'2026-11-01T07:00:00Z':null}));
@@ -19,7 +19,7 @@ http.createServer(async(req,res)=>{
    }
    const {default:handler}=await import('../api/'+name+'.js');return await handler(req,res);
  }
- const file=path.resolve(root,'.'+decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
+ const file=path.resolve(root,'.'+decodeURIComponent(['/','/game','/game/'].includes(url.pathname)?'/index.html':['/assessment','/assessment/','/teacher','/teacher/'].includes(url.pathname)?'/assessment.html':url.pathname));
  if(!file.startsWith(root+path.sep))throw Error('invalid path');
  const info=await stat(file);if(!info.isFile())throw Error('not found');
  res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(await readFile(file));

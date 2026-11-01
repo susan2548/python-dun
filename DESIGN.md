@@ -30,6 +30,14 @@ omitted:
 
 # Python Dungeon design context
 
+## Assessment academy v1.22
+
+Source: user-approved same-site pre/post plan and supplied six-unit, forty-hour teaching plan. `/assessment` is a calm learner ledger, `/teacher` a private guildmaster desk, `/game` the established game. Root retains the existing game for saved links. Existing Thai Chakra Petch, dark slate, mint, brass and original gate artwork remain the visual identity. Short English inscriptions are decorative; every task and control is explained in Thai. Examination code uses native text/radio input and a readable monospace block; no combat decoration, sounds or timer pressure competes with the question.
+
+Canonical runtime ownership remains model B. styles.css owns base semantic tokens; assessment.css owns the academy's slate tonal surfaces and responsive layouts, consuming the same mint #9be8c2, paper #efe5ca and brass #d8b779 family. Shared ui-dialog.js owns modal focus/inert/Escape/cleanup and toast across academy and game. learners.js remains the only sign-in/signup/recovery owner, with an allowlisted return destination. CloudSaveQueue is reused for answer drafts through an assessment adapter, including revision conflicts and lost acknowledgements.
+
+The learner's three ordered stages are pre-test, existing learning materials/game, and teacher-opened post-test. A single main question surface sits beside the answer ledger on desktop; at <=760px the question comes first and the answer index follows in the natural document scroll. Native selects own platform popup geometry. Teacher lists use a real table, server paging at 20 rows, committed name/ID search in the URL, local horizontal overflow, and all-class CSV export. Existing game scenes, save semantics, map and public ranking are preserved. See ASSESSMENT.md and UX-CONTRACT.md for score, authorization, retention and rollback behavior.
+
 ## Overview
 
 An enchanted writing desk beside a readable side-view dungeon fight. Thai beginners must write real Python and understand each lesson. The requested editor reference sets the teal code surface, line numbers and compact command buttons. The game world retains its existing dark pixel identity, NPC scenes, map and recorded music.
@@ -66,7 +74,7 @@ Square dungeon panels and pixel clusters. Editor helper buttons use a small 3px 
 | Skill vocabulary | tactical-engine.js SKILLS + skillAliasMap() | Thai name and English ID resolve to one selected skill; worker validates lesson and power |
 | Combat motion | combat-cinema.js + sprite-motion.js | Shared clock for root motion, pose, VFX and exactly one impact; cleaned after completion |
 | Scrollbar | editor.css global baseline | Visible native scrollbar on input; paint/gutter are inert synced mirrors |
-| Toast / modal | game.js existing toast/showModal | Shared status messages, modal focus and Escape behaviour retained |
+| Toast / modal | ui-dialog.js toast/showModal | Shared status messages, modal focus and Escape behaviour retained |
 | Expedition map | expedition-map.js + expedition-map.css | Read-only room inspection, explicit entry confirmation button, locked/replay/resume states; existing game.js owns starting a battle |
 | Lesson and objective | game.js + learning-ui.css | Separate 22px Thai lesson heading; gold objective card precedes action choices, 21px prompt, explicit scroll/focus button to the blank editor; 19px text on phones |
 | Status details | status-inspector.js + learning-ui.css | Both actors use real icon buttons. Hover/keyboard focus explains effects; click/tap pins a nonmodal panel with close/Escape/outside dismissal. Body-level positioning avoids scene clipping. Viewing never spends a turn. |

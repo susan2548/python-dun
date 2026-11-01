@@ -1,3 +1,4 @@
+import {showModal,closeModal,toast} from './ui-dialog.js?v=1';
 import {LEVELS,CAMPAIGN_VERSION,migrateCampaign,updateFrontier,nextFloorAfterClear} from './campaign.js?v=1';
 import {coinAmount} from './currency.js?v=1';
 import {QUESTION_TEMPLATES} from './question-bank.js?v=1';
@@ -19,7 +20,7 @@ import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
-import {learner,mountLearners} from './learners.js?v=4';
+import {learner,mountLearners} from './learners.js?v=5';
 import {ActivePlayClock,normalizeTiming} from './play-clock.js?v=1';
 import {combatInventory} from './combat-inventory.js?v=2';
 import {openAudioSettings} from './audio-settings.js?v=1';
@@ -62,7 +63,6 @@ migrateClassBalance(save);
 let screen = "intro",
   battle = null,
   selected = "adventurer",
-  modal = null,
   worker = null,
   workerId = 0,
   workerPending = new Map();
@@ -99,12 +99,6 @@ function updateBar() {
       ? `FLOOR ${String(battle.level + 1).padStart(2, "0")} / ${String(LEVELS.length).padStart(2,"0")}`
       : "CODE • CONQUER • LEARN";
   if(screen==='map' && save.classId && $('.expedition-hub'))updateExpeditionVitals({save,vitals:getVitals(),hero:CLASSES[save.classId]});
-}
-function toast(message) {
-  let t = $("#toast");
-  t.textContent = message;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2600);
 }
 function beep() {
   playSfx("ui");
@@ -196,7 +190,7 @@ function showResetPrompt() {
   showModal(
     '<span class="eyebrow">NEW GAME</span><h2 class="pixel-title">เริ่มผจญภัยใหม่?</h2><p>ความคืบหน้า ดาว เหรียญ และของในรอบปัจจุบันจะเริ่มใหม่ทั้งหมด ผลดีที่สุดที่เคยบันทึกในตารางอันดับยังคงอยู่</p><div class="modal-actions"><button class="btn" id="confirmReset">ยืนยันเริ่มใหม่</button><button class="btn ghost" data-close>ยกเลิก</button></div>',
   );
-  modal.querySelector('[data-close]')?.focus({preventScroll:true});
+  document.querySelector('.modal-backdrop [data-close]')?.focus({preventScroll:true});
   $("#confirmReset").onclick = () => {
     // Leave the map before saving a profile with no selected class.
     screen = 'intro';
@@ -221,41 +215,6 @@ function showClassPicker() {
   }});
 }
 function showShop() { if(!learner.requireLogin())return; openMerchant({save,showModal,persist}); }
-function showModal(html,{onClose}={}) {
-  closeModal();
-  modal = document.createElement("div");
-  modal.className = "modal-backdrop";
-  modal.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
-  document.body.append(modal);
-  const previousFocus=document.activeElement;
-  modal.previousFocus=previousFocus;
-  modal.cleanup=onClose;
-  modal.onkeydown=e=>{
-    if(e.key==='Escape'){e.preventDefault();closeModal();return;}
-    if(e.key!=='Tab')return;
-    const controls=[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],[tabindex="0"]')];
-    if(!controls.length)return;
-    if(e.shiftKey&&document.activeElement===controls[0]){e.preventDefault();controls.at(-1).focus();}
-    else if(!e.shiftKey&&document.activeElement===controls.at(-1)){e.preventDefault();controls[0].focus();}
-  };
-  const heading=modal.querySelector('h2');if(heading){heading.id||='dialogTitle';modal.querySelector('[role="dialog"]').setAttribute('aria-labelledby',heading.id);}
-  $('.app-shell').inert=true;
-  modal.querySelector('input:not(:disabled),button:not(:disabled)')?.focus({preventScroll:true});
-  modal
-    .querySelectorAll("[data-close]")
-    .forEach((b) => (b.onclick = closeModal));
-  modal.onclick = (e) => {
-    if (e.target === modal) closeModal();
-  };
-}
-function closeModal() {
-  const previousFocus=modal?.previousFocus;
-  modal?.cleanup?.();
-  modal?.remove();
-  modal = null;
-  $('.app-shell').inert=false;
-  if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
-}
 async function startBattle(index) {
   if(!learner.requireLogin())return;
   if (!Number.isInteger(index)||index<0||index>=LEVELS.length||(index>save.cleared&&!save.stars[index]&&save.activeBattle?.level!==index)) return;
@@ -915,3 +874,5 @@ setInterval(samplePlayTime,1000);
 setInterval(()=>{if(learner.canPlay()&&['map','battle'].includes(screen)&&!document.hidden)persist();},15000);
 document.addEventListener('visibilitychange',()=>{samplePlayTime();if(learner.canPlay()&&['map','battle'].includes(screen))persist();});
 window.addEventListener('pagehide',()=>{samplePlayTime();if(learner.canPlay()&&['map','battle'].includes(screen))persist();});
+
+$('#assessmentBtn').onclick=async()=>{if(battle?.busy)return toast('รอจบเทิร์นนี้ก่อนเข้าห้องเรียน');if(learner.user)persist();if(await learner.flush())location.assign('/assessment');else toast('ยังบันทึกเกมไม่ได้ ตรวจการเชื่อมต่อแล้วลองใหม่');};

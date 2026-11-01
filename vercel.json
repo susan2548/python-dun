@@ -2,10 +2,40 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
-  "regions": ["sin1"],
-  "rewrites": [{"source":"/api/auth/:path*","destination":"/api/auth?path=:path*"}],
-  "headers": [{"source":"/(.*)","headers":[
-    {"key":"X-Content-Type-Options","value":"nosniff"},
-    {"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}
-  ]}]
+  "regions": [
+    "sin1"
+  ],
+  "rewrites": [
+    {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth?path=:path*"
+    },
+    {
+      "source": "/assessment",
+      "destination": "/assessment.html"
+    },
+    {
+      "source": "/teacher",
+      "destination": "/assessment.html"
+    },
+    {
+      "source": "/game",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
 }

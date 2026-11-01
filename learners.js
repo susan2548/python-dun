@@ -12,6 +12,7 @@ export const learner={
  canPlay(){return ready&&!!user&&!transition&&status!=='expired'&&!queue?.blocked;},
  requireLogin(){if(this.canPlay())return true;if(!user||status==='expired')loginForm('login');else hooks.toast('รอโหลดบัญชีหรือจัดการเซฟก่อนเล่นต่อ');return false;},
  showGate:()=>loginForm('login'),
+ async flush(){clearTimeout(timer);return queue?queue.flush():true;},
  save(snapshot){if(!user||!queue)return;queue.stage(snapshot);clearTimeout(timer);timer=setTimeout(()=>queue.flush(),700);},
  recordVictory(battle,classId,save){if(user&&queue)queue.addClear({id:crypto.randomUUID(),floor:battle.level,classId,answers:battle.answeredQuestions,mistakes:battle.mistakes,enemyHp:0,runId:save.runId,elapsedMs:save.playTimeMs,timed:save.timingVersion===1});},
  openAccount,openDashboard,
@@ -80,11 +81,19 @@ async function activate(nextUser,{nickname:chosen}={}){
  if(chosen&&!profile.nickname){await saveNickname(chosen);}
  if(local&&meta.dirty&&meta.revision!==remote.revision){await resolveConflict({local,remote,meta});return;}
  if(useLocal){queue.stage(local);queue.flush();}
+ if(await returnToPortal())return;
  if(!remote.save&&!useLocal){
   const guest=read(ROOT);
   if(guest?.classId)offerImport(guest);
   else {hooks.persist();if(!profile.nickname)openNickname();}
  }
+}
+
+async function returnToPortal(){
+ const target=new URLSearchParams(location.search).get('return');
+ if(!['/assessment','/teacher'].includes(target))return false;
+ if(queue&&!await queue.flush()){hooks.toast('บันทึกเซฟเกมให้สำเร็จก่อนเข้าห้องเรียน');return true;}
+ location.assign(target);return true;
 }
 function offerImport(guest){
  hooks.showModal(`<span class="eyebrow">YOUR JOURNEY</span><h2>ใช้ความคืบหน้าบนเครื่องนี้?</h2><p>บัญชีนี้ยังไม่มีเซฟ เลือกเริ่มใหม่หรือคัดลอกเซฟที่เคยฝึกบนเครื่องนี้เข้าบัญชีของคุณ</p><p class="muted">ผลเก่าจะเก็บไว้เล่นต่อได้ ส่วนอันดับเริ่มนับด่านที่ผ่านขณะล็อกอิน</p><div class="modal-actions"><button class="btn" id="importGuest">ใช้เซฟบนเครื่องนี้</button><button class="btn ghost" id="startAccountFresh">เริ่มใหม่ในบัญชีนี้</button></div>`);
@@ -102,7 +111,7 @@ async function resolveConflict(details){
   const remote=details?.remote||await api('/api/player'),local=details?.local||hooks.getSave(),meta=details?.meta||read(META+user.id,{});
   hooks.showModal(`<span class="eyebrow">SAVE CONFLICT</span><h2>พบเซฟจากอีกเครื่อง</h2><p>เลือกเซฟที่ต้องการใช้ เราจะเก็บสำเนาบนเครื่องไว้ก่อนเปลี่ยน</p><p>เซฟบนบัญชี: ${remote.save?.stars?.filter(Boolean).length||0}/12 ด่าน<br>เซฟบนเครื่อง: ${local?.stars?.filter(Boolean).length||0}/12 ด่าน</p><div class="modal-actions"><button class="btn" id="useRemote">ใช้เซฟบนบัญชี</button><button class="btn ghost" id="useLocal">ใช้เซฟบนเครื่องแทน</button></div>`);
   queue.blocked=true;announce('conflict');
-  const choose=useLocal=>{localStorage.setItem(ROOT+':backup:'+user.id,JSON.stringify(local));setQueue(remote.revision,useLocal?meta.clears||[]:[]);hooks.onIdentity(useLocal?local:remote.save);hooks.closeModal();hooks.persist();queue.flush();};
+  const choose=async useLocal=>{localStorage.setItem(ROOT+':backup:'+user.id,JSON.stringify(local));setQueue(remote.revision,useLocal?meta.clears||[]:[]);hooks.onIdentity(useLocal?local:remote.save);hooks.closeModal();hooks.persist();if(await queue.flush())await returnToPortal();};
   $('#useRemote').onclick=()=>choose(false);$('#useLocal').onclick=()=>choose(true);
  }catch(error){hooks.toast(error.message);}
 }
@@ -125,7 +134,7 @@ function renderGate(content){
 function loginForm(mode,email=''){
  const switchingForm=!!$('#authForm');
  const register=mode==='register',reset=mode==='reset';
- history.replaceState(null,'',reset?'#recovery':register?'#signup':'#login');
+ history.replaceState(null,'',location.pathname+location.search+(reset?'#recovery':register?'#signup':'#login'));
  document.title=(register?'สมัครบัญชี':reset?'กู้รหัสผ่าน':'เข้าสู่ระบบ')+' — PYTHON DUNGEON';
  renderGate(`<div class="auth-heading"><span class="eyebrow">RUNEBREAKER GUILD</span><span class="guild-seal" aria-hidden="true"><img src="./assets/brand/runegate-serpent.svg?v=1" width="48" height="48" alt=""></span><h2>${register?'ลงชื่อเป็นนักผจญภัย':reset?'กู้คืนตราประจำตัว':'เข้าสู่กิลด์นักโค้ด'}</h2><p>${register?'สร้างบัญชีเพื่อเริ่มเส้นทางของคุณ':reset?'รับรหัสยืนยันทางอีเมลเพื่อตั้งรหัสผ่านใหม่':'เข้าสู่ระบบเพื่อเปิดประตู และเล่นต่อจากเซฟของคุณ'}</p></div>
  ${!reset?`<div class="auth-modes" aria-label="บัญชีผู้เรียน"><button type="button" id="authLoginTab" data-auth-mode="login" aria-pressed="${!register}">เข้าสู่ระบบ</button><button type="button" id="authSignupTab" data-auth-mode="register" aria-pressed="${register}">สมัครบัญชี</button></div>`:''}
@@ -183,7 +192,7 @@ export async function openDashboard(page=1){
  if(transition)return;
  if(!hooks.canSwitch())return hooks.toast('รอจบเทิร์นนี้ก่อนดูอันดับ');
  rankingFeed?.stop();hooks.beforeDashboard();hooks.closeModal();hooks.onDashboard();
- history.replaceState(null,'','#ranking?page='+page);
+ history.replaceState(null,'',location.pathname+location.search+'#ranking?page='+page);
  const generation=++viewGeneration;document.title='อันดับดาวนักผจญภัย — PYTHON DUNGEON';
  const save=hooks.getSave();
  $('#app').innerHTML=`<section class="ranking-page"><header class="ranking-heading"><div class="hall-emblem" aria-hidden="true">${crest}</div><div><span class="eyebrow">HALL OF RUNEBREAKERS</span><h1>อันดับดาวนักผจญภัย</h1><p>ใครครองดาวสูงสุดในดันเจี้ยนตอนนี้?</p></div><button class="btn ghost" id="rankingBack">← ${user?'กลับสู่การผจญภัย':'กลับหน้าเข้าสู่ระบบ'}</button></header>
@@ -196,7 +205,7 @@ export async function openDashboard(page=1){
  const sync=user?queue?.flush():null;
  if(user)Promise.resolve(sync).then(()=>api('/api/player')).then(p=>{if(generation!==viewGeneration||!$('#rankedCount'))return;profile=p;$('#rankedCount').textContent=(p.best?.stars??0)+'/36';}).catch(()=>{if(generation===viewGeneration&&$('#rankedCount'))$('#rankedCount').textContent='—';});
  rankingFeed=new RankingLiveFeed({active,load:async()=>{await sync;return api('/api/ranking?page='+currentPage);},onData:data=>{
-  currentPage=data.page;history.replaceState(null,'','#ranking?page='+data.page);
+  currentPage=data.page;history.replaceState(null,'',location.pathname+location.search+'#ranking?page='+data.page);
   const stamp=new Intl.DateTimeFormat('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(data.generatedAt||Date.now()));
   $('#rankingUpdated').textContent='อัปเดตล่าสุด '+stamp;$('#rankingUpdated').dataset.state='live';
   $('#rankingContent').setAttribute('aria-busy','false');hasData=true;

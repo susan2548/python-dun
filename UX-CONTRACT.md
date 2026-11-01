@@ -1,12 +1,30 @@
 # UI ownership and learner data contract
 
+## Assessment workflow v1.22
+
+Authoritative sources: explicit user approval for a same-site assessment workflow, the supplied six-unit teaching plan, and `server/assessment-schema.sql` / `api/assessment.js` server invariants. `ASSESSMENT.md` documents those rules and operations. Existing learner auth, save and game contracts below remain in force.
+
+| Capability | Canonical owner | Observable behavior / verification |
+| --- | --- | --- |
+| Assessment routes and session | assessment.js + learners.js + api/assessment.js | Existing verified session; allowlisted login return; private 401/403 states; no new identity provider |
+| Select/Listbox | Native select in assessment.js | Platform-owned popup deliberately retained for classroom and teacher-only question-form selection; Thai labels and native keyboard selection |
+| Academy forms | assessment-client.js validateForm | Native labelled controls/selects, app-owned Thai field errors, novalidate, preserve values and focus first invalid field |
+| Shared overlays and feedback | ui-dialog.js | Named modal, inert background, visible focus cycle, Escape/close/cleanup/focus restore, shared live toast |
+| Answer draft | assessment-exam.js + CloudSaveQueue + assessment_save | Account/attempt-bound local cache, online ACK status, IME-safe input, immutable retry mutation, CAS, explicit conflict recovery with backup; no silent overwrite |
+| Submission | api/assessment.js + assessment_submit | Flush drafts first; review blank answers; server-only grading, lock once submitted, duplicate ACK safe, closed round retains drafts but blocks submit |
+| Class list/report | assessment.js + api/assessment.js report | Own-class authorization, 20 rows/page with clamping, name/code search and page in URL, no-results recovery, all-class UTF-8 CSV with formula protection |
+
+The selected classroom controls pre/post availability. Post requires submitted pre; it does not require any game completion. Submitted pre and first post remain immutable; teacher can authorize one extra post attempt at a time. First post, best post and retake count are separate. First-post stars are a twelve-floor snapshot of authenticated game clears, not later current stars. Pre baseline, first-post /24, optional linear /20 and stars /36 remain separately labelled, with no invented pass mark or combined grade. Teacher-only key preview/review is private and never included in student questions or static assets.
+
+Teachers are granted explicitly in assessment_teachers using an existing verified account; students cannot self-grant. Teachers see only classes they own, students only their enrollments/attempts. Public rankings never include student codes, real names from enrollment, test scores or emails. Assessment changes are additive and do not reset game saves. Submitted records are retained until an explicit future owner-requested cleanup; there is no product deletion action in this release. Acknowledged local cache is ignored after 72 hours; unacknowledged drafts remain recoverable and are never discarded by age. The main key is removed after confirmed submission; conflict backups stay device-local for recovery. Personal reporting and CSV require a verified teacher session on every request.
+
 Source: user requests for separate learner authentication and live star ranking, including ongoing learners; completed ties use active time to finish (v1.19). Campaign and learning invariants are owned by `campaign.js`, `lesson-progress.js`, `question-bank.js` and `hero-classes.js`.
 
 | Capability | Canonical owner | Observable behavior / verification |
 | --- | --- | --- |
 | Form | learners.js account forms | Thai labels, novalidate, field-associated inline errors, masked passwords/show button, no duplicate submit; real managed auth |
-| Modal | game.js showModal/closeModal | Named dialog, inert background, native input/button focus cycle, Escape and focus restoration; shared by NPC and learner flows |
-| Toast | game.js toast | Shared live status; critical auth/sync errors also remain inline |
+| Modal | ui-dialog.js showModal/closeModal | Named dialog, inert background, native input/button focus cycle, Escape and focus restoration; shared by NPC and learner flows |
+| Toast | ui-dialog.js toast | Shared live status; critical auth/sync errors also remain inline |
 | Scrollbar | editor.css global rules | Visible, operable global baseline; ranking table owns horizontal overflow |
 | Cloud saves | cloud-save.js + api/player.js | Account-bound local storage, verified server session, expected-account guard, revisions and idempotent mutation IDs; conflict pauses writes for explicit choice |
 | Ranking list | learners.js + api/ranking.js | Native table, server-fixed stars-desc/completion-duration-asc sort, 20/page with boundary clamping, top four, actual loading/empty/error/success states |
@@ -14,8 +32,9 @@ Source: user requests for separate learner authentication and live star ranking,
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 | --- | --- | --- | --- | --- |
 | Form | learners.js | This contract's account and public-name rules | login / signup / recovery / nickname | real browser auth, field errors and cloud QA |
+| Select/Listbox | Native select in assessment.js | Academy classroom/form selection | native, platform-owned popup | real browser selection, keyboard and narrow viewport |
 | Scrollbar | editor.css | DESIGN.md runtime CSS ownership | default / ranking table overflow | computed widths and 390px browser view |
-| Toast | game.js toast | shared modal/feedback contract above | success / error / information | browser account and game flows |
+| Toast | ui-dialog.js toast | shared modal/feedback contract above | success / error / information | browser account and game flows |
 | CRUD | api/player.js + cloud-save.js | server/schema.sql and account data rules below | create profile / load / save / current-run reset | tools/qa-cloud.mjs and cloud-save.test.mjs |
 
 `premium-ui.json` audits `public/`, the exact generated production runtime copies. Build before auditing. Development-only sprite labs, source docs, server helpers and duplicate root copies are outside that published UI surface. Dynamically bound buttons remain subject to real browser verification even when the static scanner cannot detect their handlers.
@@ -33,7 +52,7 @@ Account creation/login/logout, cloud load/update, nickname update and real ranki
 
 Explicit current-task rule: only authenticated learners may begin or resume play. learners.js owns the full-page login/signup/recovery gate, while game.js checks learner.requireLogin at intro/map/battle/Run boundaries. Boot shows an account-check state, never a playable guest flash. Logout, invalid session and account mismatch cannot enable a Run or start button. Existing cookie-derived authorization continues on every personal API route. Anonymous ranking is read-only and offers login. Legacy guest saves are retained for explicit import without anonymous play.
 
-The shared full-page account form replaces the dismissible login modal. Native labels, 16px inputs, field errors, masked/show password, email preservation, busy/duplicate prevention, recovery and responsive document scrolling remain required. Account-management/NPC dialogs continue to reuse game.js showModal. New-account import remains a deliberate choice, and account changes never merge saves automatically.
+The shared full-page account form replaces the dismissible login modal. Native labels, 16px inputs, field errors, masked/show password, email preservation, busy/duplicate prevention, recovery and responsive document scrolling remain required. Account-management/NPC dialogs continue to reuse ui-dialog.js showModal. New-account import remains a deliberate choice, and account changes never merge saves automatically.
 
 Run feedback is result-driven, not click-driven: success requires Python/action/cooldown/MP acceptance and precedes animation; empty, invalid, wrong mode or insufficient MP uses a separate non-voice recording set. Rejected commands unlock the editor and do not advance a lesson. Utility Run consumes its existing single turn. Master mute covers both effects; the character-voice toggle does not mute SFX. Tests: combat-soundbank.test.mjs, tools/qa-run-voices.html and browser combat QA.
 
@@ -55,6 +74,6 @@ Canonical owner: combat-inventory.js renders stock/availability, game.js renderC
 
 ## Audio settings v1.21
 
-Canonical owners: audio-preferences.js owns normalized device-local settings and storage notification; audio-engine.js owns master, music (recorded + synthesized fallback), effects and speech gain buses; combat-audio.js routes recorded speech independently from effects and cancels stale muted cues. audio-settings.js owns the shared native slider/switch panel, using game.js showModal/closeModal cleanup and focus behavior. Only one audio-engine query version may be imported throughout runtime. The header gear and welcome button call the same entry; no separate battle voice switch remains. Busy battle turns delay opening settings rather than interrupting a cutscene. Closing settings preserves all game state and typed code.
+Canonical owners: audio-preferences.js owns normalized device-local settings and storage notification; audio-engine.js owns master, music (recorded + synthesized fallback), effects and speech gain buses; combat-audio.js routes recorded speech independently from effects and cancels stale muted cues. audio-settings.js owns the shared native slider/switch panel, using ui-dialog.js showModal/closeModal cleanup and focus behavior. Only one audio-engine query version may be imported throughout runtime. The header gear and welcome button call the same entry; no separate battle voice switch remains. Busy battle turns delay opening settings rather than interrupting a cutscene. Closing settings preserves all game state and typed code.
 
 Settings are immediate and saved on the device, not on a learner account. Opening the panel does not turn on a new visitor's audio. A remembered enable preference activates only after interaction. Muting preserves the corresponding percentage. Master zero/mute silences every route; music and speech duck callbacks always use the latest levels, and adjusting a level does not restart a song. Effect mute cannot mute speech; speech mute cannot mute Run/weapon effects. Delayed previews/cues cannot revive after close, channel mute or scene departure. Restore-levels resets defaults while retaining the current master enable switch. Verify persistence, separate-channel playback, live gain updates, cancellation, keyboard operation, focus and mobile widths; music-engine.test.mjs and audio-preferences.test.mjs cover audio invariants.

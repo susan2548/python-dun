@@ -15,3 +15,5 @@
 .guild-seal{width:44px}.guild-seal img{width:44px;height:44px;display:block}.journey-rune img{width:46px;height:46px;display:block}.gate-sigil img{width:64px;height:64px;vertical-align:middle}.auth-loading .gate-sigil img{margin:auto}
 @media(max-width:1050px){.brand-emblem{width:51px;height:51px}.brand-wordmark{width:123px}.brand{gap:8px}}
 @media(max-width:600px){.brand-emblem{width:48px;height:48px}.brand-wordmark{width:122px}.brand{min-height:50px}.welcome-copy .welcome-logo{margin-top:24px}.welcome-logo img{width:min(100%,400px)}.welcome-music{width:100%;padding:12px}.welcome-music strong{font-size:14px}.welcome-music small{font-size:11px}}
+
+@media(min-width:1051px) and (max-width:1450px){.topbar .chapter-tag{display:none}}

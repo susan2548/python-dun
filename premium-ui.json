@@ -1,10 +1,30 @@
 {
   "profile": "product-admin",
-  "sourceRoots": ["public"],
+  "sourceRoots": [
+    "public"
+  ],
   "locale": "th-TH",
   "canonicalMap": "UX-CONTRACT.md",
-  "requiredCapabilities": ["Form", "Scrollbar", "Toast", "CRUD"],
-  "requiredCommands": ["unit", "build"],
-  "commands": {"unit":"npm test","build":"npm run build"},
-  "evidence": {"crudFullFlow":"QA-v1.21.md","failurePaths":"music-engine.test.mjs"}
+  "requiredCapabilities": [
+    "Form",
+    "Scrollbar",
+    "Toast",
+    "CRUD",
+    "Select/Listbox"
+  ],
+  "requiredCommands": [
+    "unit",
+    "build"
+  ],
+  "commands": {
+    "unit": "npm test",
+    "build": "npm run build"
+  },
+  "evidence": {
+    "crudFullFlow": "QA-v1.22.md",
+    "failurePaths": "tools/qa-assessment.mjs"
+  },
+  "ownership": {
+    "Select/Listbox": "native"
+  }
 }
