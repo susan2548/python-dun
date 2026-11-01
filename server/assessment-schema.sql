@@ -25,29 +25,41 @@ ALTER TABLE assessment_teachers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assessment_classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assessment_enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assessment_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessment_classes ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE assessment_enrollments ADD COLUMN IF NOT EXISTS removed_at timestamptz;
 
-CREATE OR REPLACE FUNCTION assessment_start(p_uid text,p_class uuid,p_phase text,p_id uuid,p_order jsonb,p_choices jsonb)
+CREATE OR REPLACE FUNCTION assessment_start(p_uid text,p_class uuid,p_phase text,p_id uuid,p_order jsonb,p_choices jsonb,p_version int)
 RETURNS jsonb LANGUAGE plpgsql AS $$
 DECLARE e assessment_enrollments%ROWTYPE; c assessment_classes%ROWTYPE; a assessment_attempts%ROWTYPE; n int;
 BEGIN
- SELECT * INTO e FROM assessment_enrollments WHERE class_id=p_class AND user_id=p_uid FOR UPDATE;
- IF NOT FOUND THEN RETURN jsonb_build_object('error','not_enrolled'); END IF;
  SELECT * INTO c FROM assessment_classes WHERE id=p_class FOR SHARE;
+ IF NOT FOUND OR c.archived_at IS NOT NULL THEN RETURN jsonb_build_object('error','archived'); END IF;
+ IF p_phase NOT IN ('pre','post') OR p_version NOT IN (1,2) THEN RETURN jsonb_build_object('error','forbidden'); END IF;
+ SELECT * INTO e FROM assessment_enrollments WHERE class_id=p_class AND user_id=p_uid AND removed_at IS NULL FOR UPDATE;
+ IF NOT FOUND THEN RETURN jsonb_build_object('error','not_enrolled'); END IF;
  SELECT * INTO a FROM assessment_attempts WHERE class_id=p_class AND user_id=p_uid AND phase=p_phase AND submitted_at IS NULL ORDER BY attempt_no DESC LIMIT 1;
  IF FOUND THEN RETURN jsonb_build_object('id',a.id,'resumed',true); END IF;
  IF (p_phase='pre' AND NOT c.pre_open) OR (p_phase='post' AND NOT c.post_open) THEN RETURN jsonb_build_object('error','closed'); END IF;
  IF p_phase='post' AND NOT EXISTS(SELECT 1 FROM assessment_attempts WHERE class_id=p_class AND user_id=p_uid AND phase='pre' AND submitted_at IS NOT NULL) THEN RETURN jsonb_build_object('error','pre_required'); END IF;
  SELECT COALESCE(max(attempt_no),0)+1 INTO n FROM assessment_attempts WHERE class_id=p_class AND user_id=p_uid AND phase=p_phase;
  IF n>(CASE WHEN p_phase='pre' THEN 1 ELSE e.post_limit END) THEN RETURN jsonb_build_object('error','limit'); END IF;
- INSERT INTO assessment_attempts(id,class_id,user_id,phase,attempt_no,question_order,choice_order)
- VALUES(p_id,p_class,p_uid,p_phase,n,p_order,p_choices);
+ INSERT INTO assessment_attempts(id,class_id,user_id,phase,attempt_no,question_order,choice_order,form_version)
+ VALUES(p_id,p_class,p_uid,p_phase,n,p_order,p_choices,p_version);
  RETURN jsonb_build_object('id',p_id,'resumed',false);
 END; $$;
 
+-- Keep callers from the previous release compatible during deployment/rollback.
+CREATE OR REPLACE FUNCTION assessment_start(p_uid text,p_class uuid,p_phase text,p_id uuid,p_order jsonb,p_choices jsonb)
+RETURNS jsonb LANGUAGE sql AS $$ SELECT assessment_start(p_uid,p_class,p_phase,p_id,p_order,p_choices,1); $$;
+
 CREATE OR REPLACE FUNCTION assessment_save(p_uid text,p_id uuid,p_revision int,p_answers jsonb,p_mutation text)
 RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE a assessment_attempts%ROWTYPE;
+DECLARE a assessment_attempts%ROWTYPE; c assessment_classes%ROWTYPE; e assessment_enrollments%ROWTYPE;
 BEGIN
+ SELECT c0.* INTO c FROM assessment_classes c0 JOIN assessment_attempts a0 ON a0.class_id=c0.id WHERE a0.id=p_id FOR SHARE OF c0;
+ IF c.archived_at IS NOT NULL THEN RETURN jsonb_build_object('error','archived'); END IF;
+ SELECT e0.* INTO e FROM assessment_enrollments e0 JOIN assessment_attempts a0 ON a0.class_id=e0.class_id AND a0.user_id=e0.user_id WHERE a0.id=p_id AND e0.user_id=p_uid FOR SHARE OF e0;
+ IF NOT FOUND OR e.removed_at IS NOT NULL THEN RETURN jsonb_build_object('error','forbidden'); END IF;
  SELECT * INTO a FROM assessment_attempts WHERE id=p_id FOR UPDATE;
  IF NOT FOUND OR a.user_id<>p_uid THEN RETURN jsonb_build_object('error','forbidden'); END IF;
  IF a.submitted_at IS NOT NULL THEN RETURN jsonb_build_object('error','submitted'); END IF;
@@ -59,19 +71,35 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION assessment_submit(p_uid text,p_id uuid,p_revision int,p_submission text,p_grade jsonb)
 RETURNS jsonb LANGUAGE plpgsql AS $$
-DECLARE a assessment_attempts%ROWTYPE; c assessment_classes%ROWTYPE; stars jsonb;
+DECLARE a assessment_attempts%ROWTYPE; c assessment_classes%ROWTYPE; e assessment_enrollments%ROWTYPE; stars jsonb;
 BEGIN
+ SELECT c0.* INTO c FROM assessment_classes c0 JOIN assessment_attempts a0 ON a0.class_id=c0.id WHERE a0.id=p_id FOR SHARE OF c0;
+ IF c.archived_at IS NOT NULL THEN RETURN jsonb_build_object('error','archived'); END IF;
+ SELECT e0.* INTO e FROM assessment_enrollments e0 JOIN assessment_attempts a0 ON a0.class_id=e0.class_id AND a0.user_id=e0.user_id WHERE a0.id=p_id AND e0.user_id=p_uid FOR SHARE OF e0;
+ IF NOT FOUND OR e.removed_at IS NOT NULL THEN RETURN jsonb_build_object('error','forbidden'); END IF;
  SELECT * INTO a FROM assessment_attempts WHERE id=p_id FOR UPDATE;
  IF NOT FOUND OR a.user_id<>p_uid THEN RETURN jsonb_build_object('error','forbidden'); END IF;
  IF a.submitted_at IS NOT NULL THEN RETURN jsonb_build_object('submitted',true,'duplicate',true); END IF;
  IF a.revision<>p_revision THEN RETURN jsonb_build_object('error','conflict','revision',a.revision); END IF;
- SELECT * INTO c FROM assessment_classes WHERE id=a.class_id FOR SHARE;
  IF (a.phase='pre' AND NOT c.pre_open) OR (a.phase='post' AND NOT c.post_open) THEN RETURN jsonb_build_object('error','closed'); END IF;
  SELECT jsonb_agg(COALESCE(d.stars,0) ORDER BY f.n) INTO stars FROM generate_series(0,11) AS f(n)
  LEFT JOIN dungeon_clears d ON d.user_id=p_uid AND d.campaign=2 AND d.floor=f.n;
  UPDATE assessment_attempts SET submitted_at=now(),submission_id=p_submission,score=(p_grade->>'score')::int,
  maximum=(p_grade->>'maximum')::int,unit_scores=p_grade->'byUnit',stars_snapshot=stars WHERE id=p_id;
  RETURN jsonb_build_object('submitted',true,'duplicate',false);
+END; $$;
+
+CREATE OR REPLACE FUNCTION assessment_join(p_uid text,p_code text,p_student text,p_name text)
+RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE c assessment_classes%ROWTYPE; e assessment_enrollments%ROWTYPE;
+BEGIN
+ SELECT * INTO c FROM assessment_classes WHERE join_code=p_code FOR SHARE;
+ IF NOT FOUND OR c.archived_at IS NOT NULL THEN RETURN jsonb_build_object('error','archived'); END IF;
+ INSERT INTO assessment_enrollments(class_id,user_id,student_code,full_name)
+ VALUES(c.id,p_uid,p_student,p_name) ON CONFLICT(class_id,user_id) DO NOTHING;
+ SELECT * INTO e FROM assessment_enrollments WHERE class_id=c.id AND user_id=p_uid FOR SHARE;
+ IF e.removed_at IS NOT NULL THEN RETURN jsonb_build_object('error','removed'); END IF;
+ RETURN jsonb_build_object('id',c.id);
 END; $$;
 
 

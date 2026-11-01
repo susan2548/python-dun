@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FORMS,UNITS,publicQuestions,cleanAnswers,gradeAnswers} from './server/assessment-bank.mjs';
+import {FORMS,UNITS,publicQuestions,cleanAnswers,gradeAnswers,formFor} from './server/assessment-bank.mjs';
 import {csvCell,mediaUrl,uuid,revision} from './server/assessment-policy.mjs';
-test('parallel assessment forms have 24 unique questions, 12 choices and 12 code fills, matched unit coverage',()=>{
+test('parallel assessment forms have 24 unique questions, 12 choices and 12 code token questions, matched unit coverage',()=>{
  assert.equal(UNITS.length,6);
  for(const phase of ['pre','post']){
   const bank=FORMS[phase];assert.equal(bank.length,24);assert.equal(new Set(bank.map(q=>q.id)).size,24);
-  assert.equal(bank.filter(q=>q.type==='choice').length,12);assert.equal(bank.filter(q=>q.type==='fill').length,12);
+  assert.equal(bank.filter(q=>q.type==='choice').length,12);assert.equal(bank.filter(q=>q.type==='code-choice').length,12);
   assert.deepEqual(UNITS.map((_,i)=>bank.filter(q=>q.unit===i).length),[2,4,4,6,4,4]);
   for(const q of bank){assert.ok(q.answer);assert.ok(q.explanation);if(q.choices)assert.ok(q.choices.some(c=>c.id===q.answer));}
  }
@@ -24,14 +24,14 @@ test('grading is deterministic, bounded, case-sensitive, and does not execute co
   assert.equal(gradeAnswers(phase,{}).score,0);
   const correct=Object.fromEntries(FORMS[phase].map(q=>[q.id,q.answer]));
   const grade=gradeAnswers(phase,correct);assert.equal(grade.score,24);assert.equal(grade.byUnit.reduce((s,u)=>s+u.score,0),24);
-  const fills=FORMS[phase].filter(q=>q.type==='fill');
+  const fills=FORMS[phase].filter(q=>q.type==='code-choice');
   for(const q of fills){assert.equal(gradeAnswers(phase,{[q.id]:' '+q.answer+' '}).score,1);assert.equal(gradeAnswers(phase,{[q.id]:'__import__("os").system("danger")'}).score,0);}
   const token=fills.find(q=>q.answer==='ValueError');assert.equal(gradeAnswers(phase,{[token.id]:'valueerror'}).score,0);
  }
 });
 test('answers reject extra ids, non-string payloads, invalid choices and oversized inputs',()=>{
  assert.throws(()=>cleanAnswers('pre',{unknown:'1'}));assert.throws(()=>cleanAnswers('pre',[]));assert.throws(()=>cleanAnswers('pre',{pre02:1}));assert.throws(()=>cleanAnswers('pre',{pre01:'99'}));assert.throws(()=>cleanAnswers('pre',{pre02:'a'.repeat(161)}));
- assert.deepEqual(cleanAnswers('pre',{pre01:'',pre02:' end '}),{pre01:'',pre02:'end'});
+ assert.deepEqual(cleanAnswers('pre',{pre01:'',pre02:' end '}),{pre01:'',pre02:'end'});assert.throws(()=>cleanAnswers('pre',{pre02:'invented'}));
 });
 test('teacher CSV protects formulas while retaining a legitimate negative numeric gain',()=>{
  for(const v of ['=SUM(1,2)','+cmd','-danger','@x',' \t=cmd'])assert.ok(csvCell(v).startsWith('"\''));
@@ -41,4 +41,22 @@ test('class links and identity/revision syntax are restricted',()=>{
  assert.equal(mediaUrl(''),'');assert.equal(mediaUrl('https://example.com/lesson'),'https://example.com/lesson');
  for(const link of ['javascript:alert(1)','http://example.com','https://user:password@example.com'])assert.throws(()=>mediaUrl(link));
  assert.throws(()=>uuid('a-b'));assert.throws(()=>revision(-1));assert.throws(()=>revision(1.5));
+});
+
+
+test('every code token question has four unique, plausible options with exactly one key',()=>{
+ for(const bank of Object.values(FORMS))for(const q of bank.filter(q=>q.type==='code-choice')){
+  assert.equal(q.choices.length,4);assert.equal(new Set(q.choices.map(c=>c.id)).size,4);
+  assert.equal(q.choices.filter(c=>c.id===q.answer).length,1);assert.equal(q.code.split('____').length,2);
+  for(const c of q.choices)assert.equal(gradeAnswers(q.id.startsWith('pre')?'pre':'post',{[q.id]:c.id}).score,c.id===q.answer?1:0);
+ }
+});
+test('legacy started attempts retain free-text form and version-specific validation',()=>{
+ for(const phase of ['pre','post']){
+  const old=formFor(phase,1);assert.equal(old.filter(q=>q.type==='fill').length,12);
+  assert.equal(publicQuestions(phase,old.map(q=>q.id),{},1).filter(q=>q.type==='fill').length,12);
+  assert.equal(gradeAnswers(phase,Object.fromEntries(old.map(q=>[q.id,q.answer])),1).score,24);
+ }
+ assert.deepEqual(cleanAnswers('pre',{pre02:'a legacy draft'},1),{pre02:'a legacy draft'});
+ assert.throws(()=>formFor('pre',999));
 });

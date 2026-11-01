@@ -1,5 +1,11 @@
 # UI ownership and learner data contract
 
+## Classroom management and code tokens v1.23
+
+Assessment form v2 retains the same six-unit blueprint and 24-point scale, with 12 radio questions and 12 code blanks that each offer four shuffled tokens. `assessment-tokens.js` owns code-slot markup and native-button selection, drag/drop as progressive enhancement, clear and selection announcements. Click/touch/keyboard selection calls the same answer callback as drop. `assessment-exam.js` remains the sole autosave/submission owner; no correctness hint or new scoring logic is placed in the browser. Form v1 attempts retain their original free-text experience; API grading and review resolve the stored form version. Reports/CSV label that version.
+
+`assessment.js` + `api/assessment.js` own reversible class archive and enrollment removal/restoration. Existing `ui-dialog.js` supplies named, cancel-first confirmation. Class archive uses revision CAS, closes both rounds and preserves original records. Removed enrollments are excluded from active summaries/CSV/membership and cannot rejoin without teacher restoration. The owner may inspect/export removed records separately. Class restoration leaves rounds closed. SQL start/save/submit lock class then enrollment then attempt; archive/removal stops stale tabs writing or submitting. Auth and owner checks apply to every management mutation. Pagination and search retain the roster mode and clamp after removal; cancel/Escape performs no mutation. Game accounts/saves remain separate.
+
 ## Auth failure recovery v1.22.2
 
 `auth-feedback.js` owns fixed public auth error messages; `learners.js` owns form busy state and the conditional canonical-domain recovery link. A 403 must not masquerade as invalid credentials. Keep recovery destinations fixed to the canonical domain and allowlist return paths; never reflect provider details or passwords. Resubmission hides stale recovery links. Assessment permission gates preserve a known signed-in identity and logout control; authorization remains enforced by the server. Verification is documented in QA-v1.22.2.md.

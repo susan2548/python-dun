@@ -182,3 +182,9 @@ The welcome's secondary control opens this same sound panel. The former header m
 ## Auth recovery v1.22.2
 
 A rejected deployment must show an accurate recovery instruction using the existing form error region and a clearly labelled canonical-site link. Keep this distinct from invalid credentials, throttling and temporary outages. Preserve the signed-in identity and logout control on teacher permission gates so account switching stays available. Retain the existing slate/mint/brass visual system; no new modal, auth provider or broadened permissions. See QA-v1.22.2.md.
+
+## Code-rune questions and reversible classroom cleanup v1.23
+
+Keep the quiet slate/mint/brass academy, readable monospace code and unhurried question flow. A dashed brass slot sits exactly at the missing code token; four squared tiles use the same academy border and mint selected state. Native buttons provide click, touch and keyboard alternatives to dragging; feedback says only which token is placed, never whether it is correct. Two-by-two tiles on phones prevent cramped commands. No new illustration or combat animation competes with assessment content.
+
+Teacher cleanup uses existing page/table/modal owners. A separate class lifecycle strip names reversible deletion and offers restoration on archived rooms. Active/removed roster tabs are native links with URL state, counts and CSV scope. Red is confined to the explicit remove/archive controls and final confirmation; cancel receives initial focus. Preserve submitted records, account/session controls and page scroll. Existing v1 attempt rendering is a compatibility variant, with stored form versions visible in reports. See ASSESSMENT.md and QA-v1.23.md.

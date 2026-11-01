@@ -1,9 +1,9 @@
 // Server-only parallel forms. No answer key or explanation is published as a static asset.
-export const FORM_VERSION=1;
+export const FORM_VERSION=2;
 export const UNITS=['ภาษาและเครื่องมือ','ตัวแปร ตัวเลข และสตริง','ตัวดำเนินการและโครงสร้างข้อมูล','เงื่อนไขและการวนรอบ','ฟังก์ชัน อาเรย์ และโมดูล','คลาสและการจัดการข้อผิดพลาด'];
 const mc=(id,unit,prompt,code,choices,answer,explanation)=>({id,unit,type:'choice',prompt,code,choices:choices.map((text,i)=>({id:String(i),text})),answer:String(answer),explanation});
 const fill=(id,unit,prompt,code,answer,explanation,kind='token')=>({id,unit,type:'fill',prompt,code,answer,explanation,kind});
-export const FORMS={
+const LEGACY_FORMS={
  pre:[
  mc('pre01',0,'ข้อใดอธิบายภาษาและเครื่องมือ Python ได้ถูกต้อง','',['Python เป็นภาษาระดับสูง และ IDLE ใช้เขียนและรันโปรแกรม Python ได้','Python เป็นภาษาเครื่อง และใช้โปรแกรมวาดภาพรันโค้ด','VS Code เป็นตัวแปลภาษา Python โดยไม่ต้องมี Python','Python ต้องสร้างไฟล์ .exe ก่อนรันทุกครั้ง'],0,'Python เป็นภาษาระดับสูง ส่วน IDLE เป็นเครื่องมือพัฒนาโปรแกรม'),
  fill('pre02',0,'เติมชื่อพารามิเตอร์ให้แสดง A และ B ในบรรทัดเดียวกัน','print("A", ____=" ")\nprint("B")','end','end กำหนดข้อความท้าย print() แทนการขึ้นบรรทัดใหม่'),
@@ -57,24 +57,37 @@ export const FORMS={
  fill('post24',5,'เติมชื่อข้อผิดพลาดที่เกิดจากการแปลงข้อความนี้','try:\n    n = int("xyz")\nexcept ____:\n    print("ข้อมูลไม่ใช่จำนวนเต็ม")','ValueError','ข้อความ xyz แปลงเป็นจำนวนเต็มไม่ได้จึงเกิด ValueError'),
  ]
 };
-export function publicQuestions(phase,order,choiceOrder={}){
- const bank=new Map(FORMS[phase].map(q=>[q.id,q]));
+const tokenOptions={
+ end:['end','sep','file','flush'], '*':['*','+','/','**'], len:['len','str','int','type'],
+ append:['append','remove','pop','sort'], '1':['0','1','2','3'], '2':['0','1','2','3'],
+ else:['else','elif','break','continue'], range:['range','len','input','print'],
+ '+=':['+=','-=','*=','/='], def:['def','class','return','import'],
+ sqrt:['sqrt','pow','floor','ceil'], self:['self','name','level','cls'],
+ ValueError:['ValueError','TypeError','IndexError','ZeroDivisionError']
+};
+export const FORMS=Object.fromEntries(Object.entries(LEGACY_FORMS).map(([phase,bank])=>[phase,bank.map(q=>q.type==='fill'?{...q,type:'code-choice',choices:tokenOptions[q.answer].map(text=>({id:text,text}))}:q)]));
+export function formFor(phase,version=FORM_VERSION){
+ if(![1,2].includes(version)||!LEGACY_FORMS[phase])throw Error('form version');
+ return (version===1?LEGACY_FORMS:FORMS)[phase];
+}
+export function publicQuestions(phase,order,choiceOrder={},version=FORM_VERSION){
+ const bank=new Map(formFor(phase,version).map(q=>[q.id,q]));
  return order.map(id=>{const {answer,explanation,kind,...q}=bank.get(id);if(q.choices){const choices=new Map(q.choices.map(c=>[c.id,c]));q.choices=(choiceOrder[id]||q.choices.map(c=>c.id)).map(key=>choices.get(key));}return q;});
 }
-export function cleanAnswers(phase,values){
+export function cleanAnswers(phase,values,version=FORM_VERSION){
  if(!values||typeof values!=='object'||Array.isArray(values))throw Error('answers');
- const bank=new Map(FORMS[phase].map(q=>[q.id,q])),result={};
+ const bank=new Map(formFor(phase,version).map(q=>[q.id,q])),result={};
  for(const [id,value] of Object.entries(values)){
   if(!bank.has(id)||typeof value!=='string'||value.length>160)throw Error('answers');
-  const q=bank.get(id);if(q.type==='choice'&&value!==''&&!q.choices.some(c=>c.id===value))throw Error('answers');
+  const q=bank.get(id);if(q.choices&&value.trim()!==''&&!q.choices.some(c=>c.id===value.normalize('NFC').trim()))throw Error('answers');
   result[id]=value.normalize('NFC').trim();
  }return result;
 }
-export function gradeAnswers(phase,answers){
- const byUnit=UNITS.map((name,unit)=>({unit,name,score:0,maximum:FORMS[phase].filter(q=>q.unit===unit).length}));
- let score=0;for(const q of FORMS[phase]){
+export function gradeAnswers(phase,answers,version=FORM_VERSION){
+ const bank=formFor(phase,version),byUnit=UNITS.map((name,unit)=>({unit,name,score:0,maximum:bank.filter(q=>q.unit===unit).length}));
+ let score=0;for(const q of bank){
   const raw=(answers[q.id]||'').normalize('NFC').trim();
   const correct=q.kind==='integer'?/^(0|[1-9]\d*)$/.test(raw)&&Number(raw)===Number(q.answer):raw===q.answer;
   if(correct){score++;byUnit[q.unit].score++;}
- }return {score,maximum:FORMS[phase].length,byUnit};
+ }return {score,maximum:bank.length,byUnit};
 }
