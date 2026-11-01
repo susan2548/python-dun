@@ -10,9 +10,28 @@
 .battle-workspace .lesson-line { margin-bottom:0; line-height:1.8; }
 .battle-workspace .code-panel { min-width:0; scroll-margin-top:18px; border-top:3px solid var(--mint); }
 .battle-workspace .combat-commands { margin:0 0 18px; padding:14px; }
-.battle-workspace .combat-commands > .eyebrow { display:block; font-size:9px; margin-bottom:12px; }
 .battle-workspace .command-row { gap:7px; }
 .battle-workspace .command-button { min-height:46px; }
+.command-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.command-heading>.eyebrow{font-size:9px;line-height:2;color:var(--mint)}
+.inventory-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0;min-height:40px;padding:5px 10px;border:1px solid var(--line);background:#132b2d;color:var(--text);font:600 14px/1.4 'Chakra Petch',sans-serif;cursor:pointer}
+.inventory-toggle>img{image-rendering:pixelated;flex-shrink:0}.inventory-toggle>b{font-size:11px;min-width:20px;padding:2px 4px;background:#07191b;color:var(--mint);text-align:center}
+.inventory-toggle:hover,.inventory-toggle.open{border-color:var(--gold,#f6c876);background:#35352c;color:var(--gold,#f6c876)}
+.inventory-chevron{color:var(--muted);font-size:18px;line-height:1}.inventory-toggle.open .inventory-chevron{transform:rotate(180deg)}
+.inventory-toggle:focus-visible,.inventory-item:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+.inventory-toggle:disabled{opacity:.5;cursor:wait}
+.combat-inventory{margin-top:12px;padding:14px;border:1px solid #9be8c250;border-top:2px solid var(--mint);background:#0d2027;box-shadow:inset 0 0 0 3px #9be8c205}
+.combat-inventory[hidden]{display:none}
+.inventory-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.inventory-heading h3{margin:0;font:700 17px/1.5 'Chakra Petch',sans-serif;color:var(--text)}.inventory-heading>span{color:var(--muted);font-size:12px}
+.inventory-turn-note{color:var(--gold,#f6c876);font-size:12px;line-height:1.8;margin:6px 0 12px}
+.inventory-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.inventory-item{min-width:0;display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:5px 8px;padding:12px;text-align:left;font:14px/1.5 'Chakra Petch',sans-serif;color:var(--text);background:#172e33;border:1px solid #536d70;cursor:pointer}
+.inventory-item:hover:not(:disabled){background:#21423f;border-color:var(--mint)}
+.inventory-item-icon{grid-row:span 2;display:flex;align-items:center;justify-content:center;width:38px;height:42px;background:#0a1d23;border:1px solid #536d70}.inventory-item .skill-icon{width:28px;height:28px;padding:0}
+.inventory-item>strong{font-weight:700;white-space:nowrap}.inventory-quantity{font-size:12px;color:var(--mint);white-space:nowrap}.inventory-item-effect{grid-column:2/-1;font-size:11px;color:var(--muted)}.inventory-item-effect b{color:var(--text);font-weight:500}
+.inventory-current{grid-column:1/-1;color:var(--muted);font-size:11px;margin-top:3px}.inventory-use{grid-column:1/-1;color:var(--mint);font-size:12px;border-top:1px solid #536d7050;padding-top:6px;margin-top:3px;font-weight:600}
+.inventory-item:disabled{opacity:1;cursor:not-allowed;border-style:dashed;background:#12232b;color:var(--muted)}.inventory-item:disabled .inventory-item-icon{opacity:.5}.inventory-item:disabled .inventory-use{color:var(--muted)}
+.inventory-code-note,.inventory-empty{font-size:11px;line-height:1.8;color:var(--muted);margin:10px 0 0}.inventory-empty{color:var(--gold,#f6c876)}
 .battle-workspace .skill-choice { min-width:0; }
 .battle-workspace .skill-choice code { white-space:normal; }
 .battle-workspace .editor-bottom { flex-wrap:wrap; align-items:flex-start; }
@@ -42,6 +61,7 @@
   .battle-workspace .panel-heading { align-items:flex-start; }
   .battle-workspace .panel-heading h2 { font-size:16px; }
   .battle-workspace .combat-commands { padding:11px; }
+  .command-heading>.eyebrow{font-size:7px}.inventory-toggle{font-size:13px;padding:4px 8px;gap:5px}.inventory-toggle>img{width:24px;height:24px}
   .battle-workspace .editor-bottom .action-hint { flex-basis:100%; }
   .battle-workspace #runBtn { width:100%; }
   .battle-workspace .battle-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -50,3 +70,4 @@
   .history-toggle-label { display:none; }
   .combat-history .battle-log { padding:14px 13px; }
 }
+@media(max-width:420px){.inventory-cards{grid-template-columns:minmax(0,1fr)}.combat-inventory{padding:11px}.inventory-item{grid-template-columns:38px minmax(0,1fr) auto}.inventory-current{grid-column:2/-1;margin-top:0}.inventory-use{grid-column:2/-1}.inventory-item-icon{grid-row:span 4;height:54px}}

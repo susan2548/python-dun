@@ -22,6 +22,7 @@ import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
 import {learner,mountLearners} from './learners.js?v=4';
 import {ActivePlayClock,normalizeTiming} from './play-clock.js?v=1';
+import {combatInventory} from './combat-inventory.js?v=1';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -122,6 +123,7 @@ function resetWorker() {
 }
 let codeEditor;
 let battleHistoryOpen = false;
+let inventoryOpen = false;
 function runPython(code, challenge, skillName) {
   return new Promise((resolve, reject) => {
     if (!worker) {
@@ -317,6 +319,7 @@ function enemySpriteStyle(level){
   return index>=0?`background-position:${spritePosition(index)}`:`background-image:url('./assets/animation-v15/${level.kind}-portrait.png');background-size:contain;background-position:center bottom`;
 }
 function renderBattle(shouldScroll = true) {
+  inventoryOpen=false;
   ensureTactics(battle);normalizeSkill(battle,save.classId);
   ensureLessonProgress(battle);
   ensureBattleQuestion(save,battle);
@@ -343,8 +346,7 @@ function renderBattle(shouldScroll = true) {
     <textarea class="code-editor" id="code" spellcheck="false" aria-label="เขียนโค้ด Python" placeholder="เริ่มเขียนโค้ดที่นี่...">${esc(battle.code)}</textarea>
     <div class="editor-bottom"><div class="action-hint"></div><button class="btn" id="runBtn">▶ รันโค้ด (1 เทิร์น)</button></div>
     <div class="console" id="console" role="status" aria-live="polite">เขียนคำตอบเอง แล้วกดรัน • ถ้าไม่ผ่านจะบอกจุดที่ต้องแก้</div>
-    <div class="battle-controls"><button class="btn ghost small" id="potionBtn">ยาฮีล</button><button class="btn ghost small" id="hintBtn">? ดูคำใบ้</button><button class="btn ghost small" id="resetCode">↺ ล้างช่องเขียน</button><button class="btn ghost small" id="rulesBtn">ℹ วิธีเล่น</button></div>
-    <p class="supply-note">ยาฮีล +20 HP / ยามานา +3 MP • ใช้ 1 เทิร์น พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น</p>
+    <div class="battle-controls"><button class="btn ghost small" id="hintBtn">? ดูคำใบ้</button><button class="btn ghost small" id="resetCode">↺ ล้างช่องเขียน</button><button class="btn ghost small" id="rulesBtn">ℹ วิธีเล่น</button></div>
   </section>
   <details class="panel battle-info combat-history" ${battleHistoryOpen?'open':''}>
     <summary><span>⚔ ประวัติการต่อสู้</span><span class="history-meta"><span class="round">TURN ${battle.turn}</span><span class="history-toggle-label">เปิด / ปิดประวัติ</span><span class="history-chevron" aria-hidden="true">⌄</span></span></summary>
@@ -362,11 +364,8 @@ function renderBattle(shouldScroll = true) {
   $('.lesson-completion-note').insertAdjacentHTML('afterend',`<p class="question-deck-note">สุ่มจาก ${QUESTION_TEMPLATES.filter(q=>q.floor===battle.level).length} รูปแบบในเรื่องนี้ • ไม่ซ้ำจนกว่าจะครบชุด • เปลี่ยน Action ไม่เปลี่ยนโจทย์</p>`);
   $('.challenge-head span').textContent = '●'.repeat(Math.min(battle.phase,3)) + '○'.repeat(Math.max(0,3-battle.phase));
   $('.battle-intel').insertAdjacentHTML('beforeend', '<div class="tactics-panel"><div id="enemyIntent"></div><p>'+MONSTERS[battle.level].description+'</p><div id="statusLine"></div><small>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนทุกครั้งจนตอบถูก</small></div>');
-  $('.battle-controls').insertAdjacentHTML('beforeend', `<button class="btn ghost small" id="manaBtn">${skillIcon('mana')} ยามานา (${save.manaPotions})</button>`);
-  $('#manaBtn').onclick=()=>usePotion('mana');
   $('.battle-controls').insertAdjacentHTML('beforeend',`<button class="btn ghost small" id="voicesBtn" aria-pressed="${voicesEnabled()}">เสียงตัวละคร: ${voicesEnabled()?'เปิด':'ปิด'}</button>`);
   $('#voicesBtn').onclick=()=>{setVoicesEnabled(!voicesEnabled());$('#voicesBtn').textContent='เสียงตัวละคร: '+(voicesEnabled()?'เปิด':'ปิด');$('#voicesBtn').setAttribute('aria-pressed',String(voicesEnabled()));toast('เสียงพากย์และเสียงออกแรง: '+(voicesEnabled()?'เปิด (ต้องเปิดเสียงหลักด้วย)':'ปิด'));};
-  $('#potionBtn').innerHTML=`${skillIcon('health')} ยาฮีล (${save.potions})`;
   $('.combat-history').ontoggle = event => { battleHistoryOpen=event.currentTarget.open; if(battleHistoryOpen)$('#battleLog').scrollTop=$('#battleLog').scrollHeight; };
   $('.combat-badge.player').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="heroStatuses"></div>');
   $('.combat-badge.monster').insertAdjacentHTML('beforeend','<div class="actor-statuses" id="enemyStatuses"></div>');
@@ -378,7 +377,7 @@ function renderBattle(shouldScroll = true) {
   };
   codeEditor = mountCodeEditor($("#code"), {
     onRun: executeTurn,
-    onCommand: command => {if(battle.busy)return; battle.command=command;renderCommandMenu();persist();},
+    onCommand: command => {if(battle.busy)return; inventoryOpen=false;battle.command=command;renderCommandMenu();persist();},
     getSkill: () => normalizeSkill(battle,save.classId),
   });
   $("#runBtn").onclick = executeTurn;
@@ -396,7 +395,6 @@ function renderBattle(shouldScroll = true) {
     toast("ล้างช่องเขียนแล้ว");
   };
   $("#rulesBtn").onclick = showRules;
-  $("#potionBtn").onclick = usePotion;
 }
 function currentTask() {
   const task = ensureBattleQuestion(save,battle);
@@ -405,17 +403,20 @@ function currentTask() {
 }
 function renderCommandMenu() {
   const skill=normalizeSkill(battle,save.classId),menu=$('#commandMenu');
+  if(battle.busy||battle.finished)inventoryOpen=false;
+  const inventory=combatInventory({save,battle,open:inventoryOpen});
   const names={attack:'โจมตี',guard:'ป้องกัน',focus:'Focus',skill:'สกิล'};
   const info={attack:'เขียน attack(พลัง) ตามโจทย์ • ถูกแล้วโจมตีและเปิดโจทย์ใหม่ แม้การโจมตีพลาด',guard:'ใช้หนึ่งเทิร์นป้องกัน ลดดาเมจสวน 60% • ไม่ใช้ MP ไม่โจมตี ไม่เลื่อนโจทย์',focus:'ใช้หนึ่งเทิร์นเพิ่ม 1 MP และเพิ่มดาเมจการโจมตีในเทิร์นถัดไป 30% • ศัตรูสวนตามปกติ',skill:`เขียน skill("${skill.name}", พลัง) ตามโจทย์ • ${skill.description}`};
-  menu.innerHTML=`<span class="eyebrow">CHOOSE YOUR ACTION</span><div class="command-row">${Object.entries(names).map(([id,name])=>`<button class="command-button ${battle.command===id?'selected':''}" data-command="${id}" aria-pressed="${battle.command===id}" ${battle.busy?'disabled':''}>${skillIcon(id==='guard'?'shield':id==='skill'?skill.icon:id)}${name}</button>`).join('')}</div>${battle.command==='skill'?`<div class="skill-palette">${SKILLS[save.classId].map(s=>`<button class="skill-choice ${skill.id===s.id?'selected':''}" data-skill="${s.id}" ${battle.busy||(battle.cooldowns[s.id]||0)>0||battle.mp<s.mp?'disabled':''}>${skillIcon(s.icon)}<span><b>${s.name}</b><code>skill("${s.name}", พลัง)</code><small>${s.mp} MP · ${battle.cooldowns[s.id]?`รอ ${battle.cooldowns[s.id]} เทิร์น`:s.cd?`CD ${s.cd} เทิร์น`:'ไม่มีคูลดาวน์'}<br>${s.description}</small></span></button>`).join('')}</div>`:''}<p class="command-description">${info[battle.command]}</p><div class="command-accuracy"><span>โอกาสโจมตีโดน: ${Math.round(accuracy(save.classId,battle.heroStatuses)*100)}%</span><span>ศัตรู: ${Math.round(accuracy(save.classId,battle.enemyStatuses,true)*100)}%</span></div>`;
-  menu.querySelectorAll('[data-command]').forEach(b=>b.onclick=()=>{if(battle.busy)return;battle.command=b.dataset.command;renderCommandMenu();persist();});
+  menu.innerHTML=`<div class="command-heading"><span class="eyebrow">CHOOSE YOUR ACTION</span>${inventory.button}</div><div class="command-row">${Object.entries(names).map(([id,name])=>`<button class="command-button ${battle.command===id?'selected':''}" data-command="${id}" aria-pressed="${battle.command===id}" ${battle.busy?'disabled':''}>${skillIcon(id==='guard'?'shield':id==='skill'?skill.icon:id)}${name}</button>`).join('')}</div>${battle.command==='skill'&&!inventoryOpen?`<div class="skill-palette">${SKILLS[save.classId].map(s=>`<button class="skill-choice ${skill.id===s.id?'selected':''}" data-skill="${s.id}" ${battle.busy||(battle.cooldowns[s.id]||0)>0||battle.mp<s.mp?'disabled':''}>${skillIcon(s.icon)}<span><b>${s.name}</b><code>skill("${s.name}", พลัง)</code><small>${s.mp} MP · ${battle.cooldowns[s.id]?`รอ ${battle.cooldowns[s.id]} เทิร์น`:s.cd?`CD ${s.cd} เทิร์น`:'ไม่มีคูลดาวน์'}<br>${s.description}</small></span></button>`).join('')}</div>`:''}${inventory.panel}<p class="command-description">${info[battle.command]}</p><div class="command-accuracy"><span>โอกาสโจมตีโดน: ${Math.round(accuracy(save.classId,battle.heroStatuses)*100)}%</span><span>ศัตรู: ${Math.round(accuracy(save.classId,battle.enemyStatuses,true)*100)}%</span></div>`;
+  menu.querySelectorAll('[data-command]').forEach(b=>b.onclick=()=>{if(battle.busy)return;inventoryOpen=false;battle.command=b.dataset.command;renderCommandMenu();menu.querySelector(`[data-command="${battle.command}"]`)?.focus({preventScroll:true});persist();});
   menu.querySelectorAll('[data-skill]').forEach(b=>b.onclick=()=>{if(battle.busy)return;battle.selectedSkill=b.dataset.skill;renderCommandMenu();persist();});
   $('#runBtn').textContent=['guard','focus'].includes(battle.command)?`ยืนยัน ${names[battle.command]} (ใช้ 1 เทิร์น)`:'▶ รันโค้ด (1 เทิร์น)';
   const unavailable=battle.command==='skill'&&((battle.cooldowns[skill.id]||0)>0||battle.mp<skill.mp);
   $('#runBtn').disabled=battle.busy||unavailable;
   codeEditor?.setLocked(battle.busy);
-  $('#potionBtn').disabled=battle.busy||save.potions<1;
-  $('#manaBtn').disabled=battle.busy||save.manaPotions<1;
+  $('#inventoryBtn').onclick=()=>{if(battle.busy||battle.finished)return;inventoryOpen=!inventoryOpen;renderCommandMenu();$('#inventoryBtn').focus({preventScroll:true});};
+  menu.querySelectorAll('[data-use-item]').forEach(button=>button.onclick=()=>usePotion(button.dataset.useItem));
+  menu.onkeydown=event=>{if(event.key==='Escape'&&inventoryOpen){event.preventDefault();event.stopPropagation();inventoryOpen=false;renderCommandMenu();$('#inventoryBtn').focus({preventScroll:true});}};
   $('#resetCode').disabled=battle.busy;
   if(unavailable)$('#runBtn').textContent=battle.cooldowns[skill.id]?`สกิลยังรอ ${battle.cooldowns[skill.id]} เทิร์น`:'MP ไม่พอ • เลือก Focus หรือโจมตี';
   $('.goal-text').innerHTML=esc(battle.command==='skill'?currentTask().prompt.replaceAll('attack(',`skill("${skill.name}", `):currentTask().prompt)+(battle.command==='skill'?'<small class="skill-task-note">ใช้ skill() ที่เลือกแทน attack() ได้ โดยใช้พลังตามโจทย์ • โอกาสติดสถานะคิดเมื่อโจมตีโดน</small>':'');
