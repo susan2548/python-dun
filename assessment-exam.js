@@ -1,6 +1,6 @@
-import {tokenCode,tokenChoices,bindTokens} from './assessment-tokens.js?v=1';
+import {tokenCode,tokenChoices,bindTokens} from './assessment-tokens.js?v=2';
 import {CloudSaveQueue} from './cloud-save.js?v=1';
-import {$,esc,when,api,errorBox,download,localRead,localWrite} from './assessment-client.js?v=1';
+import {$,esc,when,api,errorBox,download,localRead,localWrite} from './assessment-client.js?v=2';
 import {showModal,closeModal} from './ui-dialog.js?v=1';
 let flush=async()=>true;
 export const flushExam=()=>flush();

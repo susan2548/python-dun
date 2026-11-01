@@ -10,6 +10,12 @@ export async function api(query='',data){
 }
 export function errorBox(error){return `<div class="notice danger" role="alert">${esc(error.message||error)}${error.status===401?' · <a href="/game?return=/assessment#login">เข้าสู่ระบบอีกครั้ง</a>':''}</div>`;}
 export function download(name,value,type='application/json'){const url=URL.createObjectURL(new Blob([value],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+export async function downloadCsv(name,response){
+ // Response.text() consumes a UTF-8 BOM. Preserve bytes so Excel detects Thai.
+ const bytes=new Uint8Array(await response.arrayBuffer());
+ const hasBom=bytes[0]===0xef&&bytes[1]===0xbb&&bytes[2]===0xbf;
+ download(name,new Blob(hasBom?[bytes]:[new Uint8Array([0xef,0xbb,0xbf]),bytes]),'text/csv;charset=utf-8');
+}
 export function localRead(key){try{return JSON.parse(localStorage.getItem(key));}catch{return null;}}
 export function localWrite(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{return false;}}
 let fieldSequence=0;

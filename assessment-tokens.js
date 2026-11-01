@@ -1,4 +1,4 @@
-import {esc} from './assessment-client.js?v=1';
+import {esc} from './assessment-client.js?v=2';
 export function tokenCode(q,value,disabled){
  const parts=q.code.split('____');
  return `<div class="token-code" aria-label="โค้ดพร้อมช่องวางคำตอบ"><pre class="exam-code"><code>${esc(parts[0])}<button type="button" class="token-slot" id="tokenSlot" ${disabled?'disabled':''} aria-label="ช่องคำตอบ ${esc(value||'ยังว่าง')}">${esc(value||'วางคำตอบที่นี่')}</button>${esc(parts.slice(1).join('____'))}</code></pre></div>`;

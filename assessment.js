@@ -1,6 +1,6 @@
-import {$,esc,when,api,setAccount,toast,errorBox,download,validateForm} from './assessment-client.js?v=1';
+import {$,esc,when,api,setAccount,toast,errorBox,download,downloadCsv,validateForm} from './assessment-client.js?v=2';
 import {showModal,closeModal} from './ui-dialog.js?v=1';
-import {mountExam,flushExam} from './assessment-exam.js?v=2';
+import {mountExam,flushExam} from './assessment-exam.js?v=3';
 const teacherPage=location.pathname.startsWith('/teacher');
 let home,currentClass,report;
 const chosen=new URLSearchParams(location.search).get('class');
@@ -101,7 +101,7 @@ function classDesk(){
  document.querySelectorAll('[data-retake]').forEach(b=>b.onclick=()=>allowRetake(rows[Number(b.dataset.retake)]));
 }
 async function exportCsv(){
- const b=$('#exportCsv');b.disabled=true;try{const response=await fetch('/api/assessment?view=report&id='+currentClass.id+'&format=csv'+(report.removed?'&removed=1':''),{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('ดาวน์โหลดไม่ได้ กรุณาตรวจบัญชีแล้วลองอีกครั้ง');download('python-dungeon-scores.csv',await response.text(),'text/csv;charset=utf-8');}catch(error){$('#reportError').innerHTML=errorBox(error);}finally{b.disabled=false;}
+ const b=$('#exportCsv');b.disabled=true;try{const response=await fetch('/api/assessment?view=report&id='+currentClass.id+'&format=csv'+(report.removed?'&removed=1':''),{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('ดาวน์โหลดไม่ได้ กรุณาตรวจบัญชีแล้วลองอีกครั้ง');await downloadCsv('python-dungeon-scores.csv',response);}catch(error){$('#reportError').innerHTML=errorBox(error);}finally{b.disabled=false;}
 }
 function confirmClassroomChange({title,description,label,data,destination,danger=false}){
  showModal(`<h2>${esc(title)}</h2><p>${esc(description)}</p><div id="classroomChangeError"></div><div class="modal-actions"><button class="btn ghost" data-close>ยกเลิก</button><button class="btn ${danger?'danger':''}" id="confirmClassroomChange">${esc(label)}</button></div>`);
