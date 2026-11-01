@@ -36,6 +36,8 @@ Source: user-approved same-site pre/post plan and supplied six-unit, forty-hour 
 
 Canonical runtime ownership remains model B. styles.css owns base semantic tokens; assessment.css owns the academy's slate tonal surfaces and responsive layouts, consuming the same mint #9be8c2, paper #efe5ca and brass #d8b779 family. Shared ui-dialog.js owns modal focus/inert/Escape/cleanup and toast across academy and game. learners.js remains the only sign-in/signup/recovery owner, with an allowlisted return destination. CloudSaveQueue is reused for answer drafts through an assessment adapter, including revision conflicts and lost acknowledgements.
 
+Academy link colours apply only to anchors without `.btn`. All button links inherit the same foreground/background pairs as native buttons from styles.css, including mint, gold and ghost variants; navigation link styling must never override those pairs. v1.22.1 corrects the formerly mint-on-mint entry and practice links.
+
 The learner's three ordered stages are pre-test, existing learning materials/game, and teacher-opened post-test. A single main question surface sits beside the answer ledger on desktop; at <=760px the question comes first and the answer index follows in the natural document scroll. Native selects own platform popup geometry. Teacher lists use a real table, server paging at 20 rows, committed name/ID search in the URL, local horizontal overflow, and all-class CSV export. Existing game scenes, save semantics, map and public ranking are preserved. See ASSESSMENT.md and UX-CONTRACT.md for score, authorization, retention and rollback behavior.
 
 ## Overview
