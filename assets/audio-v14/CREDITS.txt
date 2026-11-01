@@ -53,3 +53,8 @@ short fades; MP3 encoding; modest playback-rate variation for effects and
 selected monster voices; layering/timing in game. The source files, source
 hashes, processing and individual authors/licenses are in manifest.json.
 No TTS is used by this version's combat audio.
+
+V1.17 Run feedback (no spoken Run calls)
+Accepted: charge (rubberduck, spell_02.ogg) followed by arcane (rubberduck, spell_01.ogg).
+Rejected: ward (ViRiX, Misc 02.wav), reversed at playback, plus bone-2 from the credited effects set.
+These use the existing processed recordings with bounded gain, time offsets and playback-rate adjustment. Source authors and license terms above continue to apply; the two result sets have no shared source recording. The three v1.16 Run voice files are retained as legacy assets and are not used by Run.

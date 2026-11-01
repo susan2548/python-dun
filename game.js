@@ -12,15 +12,15 @@ import {
 import { mountSpriteMotion } from "./sprite-motion.js?v=8";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=5";
-import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=7";
-import {preloadCombatAudio,playBattleVoice,playRunVoice,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=4';
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=8";
+import {preloadCombatAudio,playBattleVoice,playRunFeedback,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=5';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=4";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=6";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=7";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=3";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
-import {learner,mountLearners} from './learners.js?v=1';
+import {learner,mountLearners} from './learners.js?v=2';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -134,11 +134,12 @@ function runPython(code, challenge, skillName) {
   });
 }
 function renderIntro() {
+  if(!learner.user)return learner.showGate();
   screen='intro'; window.scrollTo(0,0);updateBar();
   renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,
     onSelect:id=>{if(save.activeBattle&&id!==save.classId)return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');selected=id;renderIntro();},
     onStart:()=>{
-      if(!learner.canPlay())return toast('กำลังตรวจบัญชีหรือมีเซฟที่ต้องจัดการ ดูข้อความข้างปุ่มบัญชี');
+      if(!learner.requireLogin())return;
       if(save.classId&&save.classId!==selected) {
         const old=getVitals(),next=CLASSES[selected];
         save.expedition={hp:Math.ceil(old.hp/old.maxHp*(next.hp+save.hpBonus)),mp:Math.floor(old.mp/old.maxMp*next.mp),maxHp:next.hp+save.hpBonus,maxMp:next.mp};
@@ -149,6 +150,7 @@ function renderIntro() {
   learner.refresh();
 }
 function renderMap() {
+  if(!learner.requireLogin())return;
   if(screen==='battle'&&battle)persist();
   screen='map';battle=null;window.scrollTo(0,0);updateBar();
   renderExpeditionMap({
@@ -163,6 +165,7 @@ function getVitals() {
   return { hp: clamp(save.expedition.hp, 0, maxHp), mp: clamp(save.expedition.mp, 0, maxMp), maxHp, maxMp };
 }
 function restAtCamp() {
+  if(!learner.requireLogin())return;
   const vitals=getVitals();
   openInn({save,vitals,blocked:!!save.activeBattle,showModal,onRest:()=>{
     if(save.activeBattle)return toast('จบการต่อสู้ก่อนเข้าพัก');
@@ -176,6 +179,7 @@ function restAtCamp() {
   }});
 }
 function showResetPrompt() {
+  if(!learner.requireLogin())return;
   showModal(
     '<span class="eyebrow">NEW GAME</span><h2 class="pixel-title">เริ่มผจญภัยใหม่?</h2><p>ความคืบหน้า ดาว เหรียญ และของในรอบปัจจุบันจะเริ่มใหม่ทั้งหมด ผลดีที่สุดที่เคยบันทึกในตารางอันดับยังคงอยู่</p><div class="modal-actions"><button class="btn" id="confirmReset">ยืนยันเริ่มใหม่</button><button class="btn ghost" data-close>ยกเลิก</button></div>',
   );
@@ -195,6 +199,7 @@ function showResetPrompt() {
   };
 }
 function showClassPicker() {
+  if(!learner.requireLogin())return;
   openHeroHall({classes:CLASSES,current:save.classId,blocked:!!save.activeBattle,showModal,onConfirm:id=>{
     if(save.activeBattle)return toast('จบการต่อสู้ก่อนเปลี่ยนอาชีพ');
     const old=getVitals(),next=CLASSES[id];save.classId=id;
@@ -202,7 +207,7 @@ function showClassPicker() {
     persist();closeModal();renderMap();toast('เลือก '+next.name+' แล้ว • รักษาสัดส่วนพลังเดิม');
   }});
 }
-function showShop() { openMerchant({save,showModal,persist}); }
+function showShop() { if(!learner.requireLogin())return; openMerchant({save,showModal,persist}); }
 function showModal(html) {
   closeModal();
   modal = document.createElement("div");
@@ -237,7 +242,7 @@ function closeModal() {
   if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
 }
 async function startBattle(index) {
-  if(!learner.canPlay())return toast('จัดการเซฟหรือเข้าสู่ระบบอีกครั้งก่อนเล่นต่อ');
+  if(!learner.requireLogin())return;
   if (!Number.isInteger(index)||index<0||index>=LEVELS.length||(index>save.cleared&&!save.stars[index]&&save.activeBattle?.level!==index)) return;
   closeModal();
   const l = LEVELS[index],
@@ -442,7 +447,7 @@ function checkBattleEnd() {
 }
 async function executeUtilityTurn() {
   battle.busy=true;$('#runBtn').disabled=true;renderCommandMenu();
-  await Promise.all([frameBattle(),playRunVoice(save.classId)]);
+  await Promise.all([frameBattle(),playRunFeedback(true)]);
   if(!heroStartTurn())return;
   const command=battle.command;
   consumeFocus(battle.heroStatuses,command);
@@ -461,6 +466,7 @@ function showRules() {
   showModal(`<span class="eyebrow">TACTICAL PYTHON</span><h2>คู่มือนักโค้ด</h2><ol class="help-list"><li>เลือกโจมตีหรือสกิล แล้วเขียน Python ตามโจทย์เอง โหมดสกิลใช้ skill("ชื่อสกิล", พลัง) แทน attack(พลัง) ได้</li><li>โค้ดถูกต้องจะเปิดโจทย์ใหม่ แม้ท่าโจมตีพลาด อ่านความแม่นยำก่อนใช้ ไม่ต้องเขียนโค้ดเดิมซ้ำ</li><li>ป้องกันใช้หนึ่งเทิร์น ลดดาเมจสวน 60% ไม่เสีย MP • Focus ใช้หนึ่งเทิร์นฟื้น 1 MP และเพิ่มดาเมจโจมตีเทิร์นถัดไป 30% (ไม่ทบซ้อน)</li><li>แต่ละอาชีพมี 2 สกิล ใช้ MP และติดคูลดาวน์ตามที่แสดง ไฟบอลไม่มีคูลดาวน์ • คูลดาวน์ลดหลังลงมือทำหนึ่งเทิร์น ไม่ลดจากการรอหรือกดส่งผิด</li><li>ไอคอนใต้ HP บอกสถานะและเทิร์นคงเหลือ ชี้ไอคอนดูผล ไฟ พิษ เลือดไหลทำดาเมจตอนเริ่มเทิร์นเจ้าของสถานะ ตาพร่าลดความแม่นยำ 25%</li><li>ถูกโจมตีไม่ได้ติดสถานะเสมอ โอกาสแต่ละสกิลไม่เท่ากัน โครงกระดูก ด้วงเกราะ โกเลม และจักรกลไม่เลือดไหล</li><li>ยาฮีลฟื้น 20 HP ยามานาฟื้น 3 MP ใช้แล้วศัตรูสวน โรงแรมฟื้นได้สูงสุด 55 HP/6 MP ในราคา 30 เหรียญระหว่างชั้น</li><li>ผิด 2 ครั้งแรกฝึกฟรี จากครั้งที่ 3 ศัตรูสวนจนตอบถูก ไม่จับเวลาอ่านโจทย์ ศัตรูโกรธแรงขึ้น +2 ทุก 4 เทิร์น (สูงสุด +8) จึงตั้งรับหรือ Focus วนไม่ได้</li><li>ต้องตอบถูกอย่างน้อย 3 โจทย์ในเรื่องนี้และลด HP ศัตรูให้หมด HP/MP คงเหลือต่อเนื่องข้ามชั้นและรีโหลด</li><li>ใช้ยาฟื้น 20 HP หรือ 3 MP พร้อมตั้งรับลดดาเมจสวน 60% ครั้งนั้น ยังใช้หนึ่งเทิร์นและสถานะยังเดินเวลา</li><li>ดาววัดการเขียนโค้ด: ไม่แก้คำตอบ = 3 ดาว, แก้ 1–2 ครั้ง = 2 ดาว, มากกว่านั้น = 1 ดาว เลือดคงเหลือไม่หักดาว</li></ol><div class="modal-actions"><button class="btn" data-close>เข้าใจแล้ว</button></div>`);
 }
 async function usePotion(type='health') {
+  if(!learner.requireLogin())return;
   if(typeof type!=='string')type='health';
   const mana=type==='mana',inventory=mana?'manaPotions':'potions';
   if(!battle||battle.busy||battle.finished||save[inventory]<1)return;
@@ -671,7 +677,7 @@ async function frameBattle() {
   await wait(850);
 }
 async function executeTurn() {
-  if(!learner.canPlay())return toast('จัดการเซฟหรือเข้าสู่ระบบอีกครั้งก่อนเล่นต่อ');
+  if(!learner.requireLogin())return;
   if (!battle || battle.busy || battle.finished) return;
   ensureTactics(battle);
   if(['guard','focus'].includes(battle.command))return executeUtilityTurn();
@@ -680,6 +686,7 @@ async function executeTurn() {
     btn = $("#runBtn"),
     out = $("#console");
   if (!code) {
+    playRunFeedback(false);
     $("#code").setAttribute('aria-invalid','true');
     out.classList.add("error");
     out.textContent = "เขียนโค้ดของโจทย์นี้ก่อนกดรัน";
@@ -696,11 +703,11 @@ async function executeTurn() {
   out.textContent = "กำลังรันและตรวจคำตอบ… ครั้งแรกอาจใช้เวลาสักครู่";
   let result;
   try {
-    [result] = await Promise.all([runPython(
+    result = await runPython(
       code,
       battle.level * 3 + battle.phase % 3 + 1,
       normalizeSkill(battle,save.classId).id,
-    ),playRunVoice(save.classId)]);
+    );
   } catch (error) {
     result = { ok: false, error: error.message, technical: true };
   }
@@ -715,7 +722,7 @@ async function executeTurn() {
     if (!result.technical) battle.mistakes++;
     out.classList.add("error");
     out.textContent = "✖ " + result.error;
-    playSfx("error");
+    playRunFeedback(false);
     if (result.technical) return;
     battle.pressure = Math.min(3,(battle.pressure||0)+1);
     if(battle.pressure>=3) {
@@ -736,13 +743,14 @@ async function executeTurn() {
   }
   const action=result.actions[0],skill=normalizeSkill(battle,save.classId);
   if((battle.command==='skill')!==(action.name==='skill')) {
-    battle.busy=false;btn.disabled=false;renderCommandMenu();out.classList.add('error');out.textContent='เลือกโหมดให้ตรงกับโค้ด: โจมตีใช้ attack() และสกิลใช้ skill()';return;
+    battle.busy=false;codeEditor?.setLocked(false);btn.disabled=false;renderCommandMenu();playRunFeedback(false);out.classList.add('error');out.textContent='เลือกโหมดให้ตรงกับโค้ด: โจมตีใช้ attack() และสกิลใช้ skill()';return;
   }
   if(action.name==='skill' && battle.cooldowns[skill.id]>0) {
-    battle.busy=false;btn.disabled=false;renderCommandMenu();out.classList.add('error');out.textContent=`${skill.name} ต้องรออีก ${battle.cooldowns[skill.id]} เทิร์น เลือกโจมตี ป้องกัน หรือ Focus ระหว่างรอ`;return;
+    battle.busy=false;codeEditor?.setLocked(false);btn.disabled=false;renderCommandMenu();playRunFeedback(false);out.classList.add('error');out.textContent=`${skill.name} ต้องรออีก ${battle.cooldowns[skill.id]} เทิร์น เลือกโจมตี ป้องกัน หรือ Focus ระหว่างรอ`;return;
   }
   const requiredMp=action.name==='skill'?skill.mp:0;
   if (battle.mp < requiredMp) {
+    playRunFeedback(false);
     battle.busy = false;
     codeEditor?.setLocked(false);
     renderCommandMenu();
@@ -754,6 +762,7 @@ async function executeTurn() {
   }
   btn.textContent =
     action.name === "skill" ? "✦ กำลังร่ายสกิล…" : "⚔ กำลังโจมตี…";
+  const runFeedback = playRunFeedback(true);
   // Dismiss the mobile keyboard and frame the stage BEFORE starting the action.
   $("#code").blur();
   const scene = $("#scene");
@@ -770,6 +779,7 @@ async function executeTurn() {
     if (stable >= 3 && performance.now() - scrollStarted > 350) break;
   }
   if (screen !== "battle" || battle !== current) return;
+  await runFeedback;
   if(!heroStartTurn())return;
   announceCombat("คำตอบถูกต้อง • เตรียมโจมตี!");
   await wait(400);
@@ -876,12 +886,9 @@ $("#soundBtn").onclick = async () => {
   toast(muted ? "ปิดเสียงแล้ว" : `เปิดเพลง: ${currentTrackName()}`);
   if (!muted) {playSfx("ui");if(screen==='battle'){preloadCombatAudio(save.classId);preloadCombatAudio($('.fighter.enemy')?.dataset.kind);}}
 };
-if (save.classId) {
-  selected = save.classId;
-  renderIntro();
-} else renderIntro();
 mountLearners({
   getSave:()=>save,persist,showModal,closeModal,toast,
+  onAuthGate:()=>{if(screen==='battle'&&battle&&!battle.busy)persist();screen='auth';battle=null;codeEditor=null;closeStatusInspector();updateBar();},
   beforeDashboard:()=>{if(screen==='battle'&&battle)persist();},
   canSwitch:()=>!(screen==='battle'&&battle?.busy),
   onIdentity:data=>{
@@ -890,7 +897,7 @@ mountLearners({
     if(data)migrateCampaign(data);
     save={...fresh(),...(data||{})};migrateClassBalance(save);
     selected=save.classId||'adventurer';
-    localStorage.setItem(learner.key,JSON.stringify(save));renderIntro();
+    if(learner.user)localStorage.setItem(learner.key,JSON.stringify(save));renderIntro();
   },
   onDashboard:()=>{screen='dashboard';battle=null;window.scrollTo(0,0);updateBar();},
   onReturn:()=>save.classId?renderMap():renderIntro(),

@@ -1,5 +1,5 @@
 import {motionProfile,phaseAt,motionOffset} from './animation-profiles.js?v=2';
-import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=4';
+import {combatCue,playBattleVoice,stopBattleVoice} from './combat-audio.js?v=5';
 const ICONS = { attack:'S_Sword01.png', double_strike:'S_Dagger02.png', smoke_blade:'S_Shadow04.png', iron_oath:'shield.svg', frost_lance:'S_Ice03.png', shield_bash:'shield.svg', fireball:'S_Fire03.png', poison:'S_Poison02.png', web:'S_Poison07.png', curse:'S_Shadow03.png', stone:'S_Earth03.png', mana:'P_Blue01.png', shield:'shield.svg', health:'P_Red01.png', armor:'A_Armour01.png', focus:'S_Buff01.png', blind:'S_Shadow04.png', frost:'S_Ice03.png', bleed:'bleed.svg', inn:'inn.svg', hint:'I_Book.png' };
 export function skillIcon(key) {
   return `<img class="skill-icon" src="./assets/icons/${ICONS[key] || ICONS.attack}" alt="" aria-hidden="true">`;

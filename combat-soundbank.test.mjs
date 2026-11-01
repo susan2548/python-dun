@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {VOICE_BANK,ACTOR_VOICES,FX_FILES,NEW_MONSTER_AUDIO,soundPlan,pickTake} from './combat-soundbank.js';
+import {VOICE_BANK,ACTOR_VOICES,FX_FILES,RUN_FEEDBACK,NEW_MONSTER_AUDIO,soundPlan,pickTake} from './combat-soundbank.js';
 const manifest=JSON.parse(fs.readFileSync(new URL('./assets/audio-v14/manifest.json',import.meta.url)));
 const {clips,sources}=manifest;
 assert.equal(Object.keys(clips).length,89);
@@ -22,7 +22,9 @@ for(const [kind,[normal,special]] of Object.entries(NEW_MONSTER_AUDIO)){
 }
 assert.equal(new Set(newHashes).size,24,'New monsters need distinct recorded takes');
 const skillIds=['double_strike','smoke_blade','shield_bash','iron_oath','fireball','frost_lance'];
-assert.equal(new Set(['adventurer','knight','wizard'].map(k=>clips[VOICE_BANK['run_'+k].pool[0]].sourceSha256)).size,3,'each class has its own Run recording');
+const successHashes=new Set(RUN_FEEDBACK.accepted.map(l=>clips[l.id].sourceSha256));
+for(const [result,plan]of Object.entries(RUN_FEEDBACK))for(const layer of plan){assert.equal(clips[layer.id].kind,'fx',result+' must never speak');assert.ok(layer.gain>0&&layer.gain<.5);assert.ok(layer.delay>=0&&layer.delay<.5);assert.ok(FX_FILES.includes(layer.id));if(result==='rejected')assert(!successHashes.has(clips[layer.id].sourceSha256),'accepted/rejected use different source sounds');}
+assert(!Object.keys(VOICE_BANK).some(k=>k.startsWith('run_')),'Run has no character speech');
 assert.equal(new Set(skillIds.flatMap(k=>VOICE_BANK[k].pool)).size,skillIds.flatMap(k=>VOICE_BANK[k].pool).length,'skills need distinct voice takes');
 for(const kind of Object.keys(ACTOR_VOICES))for(const variant of ['attack','magic-bolt','guard','focus',...skillIds,'shield','poison','web','curse','stone'])for(const stage of ['windup','release','hit','miss','cutin']){
  const plan=soundPlan(kind,variant,stage,{targetKind:'skeleton'});assert.ok(plan.length>=1&&plan.length<=2);
@@ -35,4 +37,4 @@ assert.notDeepEqual(soundPlan('wizard','fireball','hit'),soundPlan('wizard','fro
 assert.notDeepEqual(soundPlan('wizard','fireball','miss'),soundPlan('wizard','fireball','hit'));
 let previous;for(let i=0;i<100;i++){const next=pickTake(['a','b','c'],previous,()=>i/100);assert.notEqual(next,previous);previous=next;}
 assert.equal(pickTake(['only'],'only'),'only');
-console.log('Recorded combat audio passed: 89 files, 15 actors, three distinct Run voices, distinct skills and bounded decoded headroom.');
+console.log('Recorded combat audio passed: 89 files, 15 actors, distinct speech-free Run feedback, distinct skills and bounded decoded headroom.');

@@ -1,9 +1,6 @@
 // Recorded source takes. Cosmetic variation never consumes the battle RNG.
 export const AUDIO_ROOT='./assets/audio-v14/';
 export const VOICE_BANK={
- run_adventurer:{pool:['vo-run-adventurer'],caption:'พร้อมลุย!',gain:.68},
- run_knight:{pool:['vo-run-knight'],caption:'เตรียมพร้อม!',gain:.68},
- run_wizard:{pool:['vo-run-wizard'],caption:'เริ่มร่ายโค้ด!',gain:.68},
  double_strike:{pool:['vo-rogue-strike'],caption:'ฟันสองจังหวะ'},smoke_blade:{pool:['vo-rogue-ambush'],caption:'คมมีดม่านควัน'},
  shield_bash:{pool:['vo-knight-bash'],caption:'กระแทกโล่'},iron_oath:{pool:['vo-oath'],caption:'คำสัตย์เหล็กกล้า'},
  fireball:{pool:['vo-fire-1','vo-fire-2'],caption:'ลูกไฟเวท'},frost_lance:{pool:['vo-frost-1','vo-frost-2'],caption:'หอกเหมันต์'},
@@ -15,7 +12,7 @@ export const VOICE_BANK={
  attack_zombie:{pool:['vo-zombie-2'],gain:.46},attack_skeleton:{pool:['vo-bone-2'],gain:.43},attack_spider:{pool:['vo-bug-2'],gain:.44},attack_wraith:{pool:['vo-shade-2'],gain:.44},attack_golem:{pool:['vo-orc-3'],rate:.90,gain:.51},attack_necromancer:{pool:['vo-necro-cast'],rate:.93,gain:.43},
 };
 export const ACTOR_VOICES={
- adventurer:['run_adventurer','double_strike','smoke_blade','attack_adventurer','guard_adventurer','focus_adventurer'],knight:['run_knight','shield_bash','iron_oath','attack_knight','guard_knight','focus_knight'],wizard:['run_wizard','fireball','frost_lance','attack_wizard','guard_wizard','focus_wizard'],
+ adventurer:['double_strike','smoke_blade','attack_adventurer','guard_adventurer','focus_adventurer'],knight:['shield_bash','iron_oath','attack_knight','guard_knight','focus_knight'],wizard:['fireball','frost_lance','attack_wizard','guard_wizard','focus_wizard'],
  zombie:['zombie_bite','attack_zombie'],skeleton:['skeleton_shield','skeleton_cleave','attack_skeleton'],spider:['spider_web','attack_spider'],wraith:['wraith_drain','attack_wraith'],golem:['golem_guard','golem_quake','attack_golem'],necromancer:['necro_drain','necro_curse','attack_necromancer'],
 };
 export const NEW_MONSTER_AUDIO={slime:['acid-lunge','acid-fountain','เมือกกัดกร่อน'],mimic:['chest-bite','coin-storm','เหรียญลวงตา'],scarab:['mandible-ram','sandstorm','พายุทรายทอง'],bat:['wing-dive','sonic-cry','คลื่นเสียงกรีดวิญญาณ'],icewolf:['ice-pounce','frost-breath','ลมหายใจเยือกแข็ง'],sentinel:['gear-slash','core-laser','ลำแสงแกนกลาง']};
@@ -25,6 +22,10 @@ for(const [kind,[,,caption]] of Object.entries(NEW_MONSTER_AUDIO)){
  ACTOR_VOICES[kind]=['attack_'+kind,kind+'_skill'];
 }
 export const FX_POOLS={light:['blade-1','blade-3','blade-5'],heavy:['blade-7','blade-9'],steel:['steel-1','steel-3','steel-7'],body:['thud-1','thud-2'],stone:['stone-1','stone-2'],bone:['bone-1','bone-2'],venom:['venom-1','venom-2'],web:['web-1','web-2']};
+export const RUN_FEEDBACK={
+ accepted:[{id:'charge',gain:.44,rate:.92,delay:0},{id:'arcane',gain:.31,rate:1.14,delay:.30}],
+ rejected:[{id:'ward',gain:.43,rate:.88,delay:0,reverse:true},{id:'bone-2',gain:.16,rate:.90,delay:.06}],
+};
 export const FX_FILES=[...new Set([...Object.values(FX_POOLS).flat(),...Object.keys(NEW_MONSTER_AUDIO).flatMap(k=>[`v15-fx-${k}-0`,`v15-fx-${k}-1`]),'charge','arcane','fire-charge','fire-flight','fire-impact','frost-impact','wind','ward','restore','dark','draw'])];
 const layer=(pool,gain,rate=1,spread=.025)=>({pool:Array.isArray(pool)?pool:[pool],gain,rate,spread});
 function materialHit(target,guarded){
