@@ -36,3 +36,8 @@ Explicit current-task rule: only authenticated learners may begin or resume play
 The shared full-page account form replaces the dismissible login modal. Native labels, 16px inputs, field errors, masked/show password, email preservation, busy/duplicate prevention, recovery and responsive document scrolling remain required. Account-management/NPC dialogs continue to reuse game.js showModal. New-account import remains a deliberate choice, and account changes never merge saves automatically.
 
 Run feedback is result-driven, not click-driven: success requires Python/action/cooldown/MP acceptance and precedes animation; empty, invalid, wrong mode or insufficient MP uses a separate non-voice recording set. Rejected commands unlock the editor and do not advance a lesson. Utility Run consumes its existing single turn. Master mute covers both effects; the character-voice toggle does not mute SFX. Tests: combat-soundbank.test.mjs, tools/qa-run-voices.html and browser combat QA.
+
+
+## v1.18 identity and scene music
+
+Brand geometry is owned by assets/brand and brand.css, reused across the header, welcome, guild and favicon. Existing home navigation and mandatory login remain canonical. The welcome music button and header toggle share game.js toggleAudio; same-scene hero changes must not restart a song, scene changes must leave one player, mute must retire it, and stale previous-media callbacks cannot revive a track. audio-engine.js remains the sole music owner. Verification: music-engine.test.mjs and tools/qa-menu-music.html, plus actual welcome/map transitions and a narrow logo layout check. Composer/license/source notices are available through the footer's เครดิตดนตรี link.

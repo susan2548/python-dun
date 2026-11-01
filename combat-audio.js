@@ -1,4 +1,4 @@
-import {combatAudioRuntime,duckMusic} from './audio-engine.js?v=4';
+import {combatAudioRuntime,duckMusic} from './audio-engine.js?v=5';
 import {AUDIO_ROOT,VOICE_BANK,ACTOR_VOICES,FX_FILES,RUN_FEEDBACK,soundPlan,pickTake} from './combat-soundbank.js?v=4';
 const cache=new Map(),active=new Set(),lastTake=new Map();
 let voiceSource=null,voiceEpoch=0,sceneEpoch=0,cueEpoch=0,voicesOn=true,lastBark=-Infinity;

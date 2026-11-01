@@ -1,7 +1,7 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><title>Run effects playback QA</title><base href="/"><link rel="stylesheet" href="styles.css"><style>body{padding:25px}button{font:inherit;padding:15px;margin:8px}pre{white-space:pre-wrap}</style></head><body><h1>ตรวจเสียง Run: ชาร์จพลัง / อักขระแตกสลาย</h1><button id="run">ตรวจเอฟเฟกต์ผ่านและไม่ผ่าน</button><button id="mute">ตรวจปิดเสียงหลัก</button><button id="voicesOff">ตรวจเมื่อปิดเสียงตัวละคร</button><pre id="report"></pre>
 <script type="module">
-import {setMuted} from './audio-engine.js?v=4';
-import {preloadCombatAudio,playRunFeedback,audioDiagnostics,setVoicesEnabled} from './combat-audio.js?v=5';
+import {setMuted} from './audio-engine.js?v=5';
+import {preloadCombatAudio,playRunFeedback,audioDiagnostics,setVoicesEnabled} from './combat-audio.js?v=6';
 const $=s=>document.querySelector(s);
 $('#run').onclick=async()=>{const results=[];$('#run').disabled=true;try{await setMuted(false);await preloadCombatAudio('wizard');for(const accepted of [true,false]){const before=audioDiagnostics(),start=performance.now();await playRunFeedback(accepted);const after=audioDiagnostics();results.push({accepted,effects:after.effects-before.effects,voices:after.voices-before.voices,elapsed:Math.round(performance.now()-start),pass:after.effects-before.effects===2&&after.voices===before.voices&&after.failures===0});$('#report').textContent=JSON.stringify(results,null,2);}}finally{$('#run').disabled=false;}};
 $('#mute').onclick=async()=>{await setMuted(true);const before=audioDiagnostics();await playRunFeedback(true);await playRunFeedback(false);$('#report').textContent=JSON.stringify({muted:true,pass:audioDiagnostics().effects===before.effects});};

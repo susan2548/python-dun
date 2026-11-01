@@ -5,7 +5,7 @@
 <script type="module">
 import {LEVELS} from './campaign.js?v=1';
 import {NEW_MONSTER_KINDS} from './animation-profiles.js?v=2';
-import {playCombatMotion} from './combat-cinema.js?v=8';
+import {playCombatMotion} from './combat-cinema.js?v=9';
 import {enemyIntent} from './combat-rules.js?v=5';
 const before=new URLSearchParams(location.search).get('before')==='1';
 const {mountSpriteMotion}=await import(before?'/asset-sources/sprite-motion-before-v1152.mjs':'./sprite-motion.js?v=8');

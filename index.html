@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#101a22" />
     <title>PYTHON DUNGEON — โค้ดเพื่อพิชิตดันเจี้ยน</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%228%22 fill=%22%23101a22%22/><text x=%2232%22 y=%2245%22 text-anchor=%22middle%22 font-size=%2242%22>⚔</text></svg>"
-    />
+    <link rel="icon" href="./assets/brand/runegate-serpent.svg?v=1" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,13 +24,14 @@
     <link rel="stylesheet" href="./campaign.css?v=1" />
     <link rel="stylesheet" href="./monster-effects.css?v=1" />
     <link rel="stylesheet" href="./learners.css?v=2" />
+    <link rel="stylesheet" href="./brand.css?v=1" />
   </head>
   <body class="signed-out">
     <div class="app-shell">
       <header class="topbar">
-        <button class="brand" id="homeBtn" aria-label="กลับหน้าเริ่มต้น">
-          <span class="brand-mark">⌘</span
-          ><span>PYTHON<span class="brand-accent">DUNGEON</span></span>
+        <button class="brand" id="homeBtn" aria-label="Python Dungeon — กลับหน้าเริ่มต้น">
+          <img class="brand-emblem" src="./assets/brand/runegate-serpent.svg?v=1" width="96" height="96" alt="" />
+          <img class="brand-wordmark" src="./assets/brand/python-dungeon-wordmark.svg?v=1" width="344" height="148" alt="" />
         </button>
         <div class="topbar-right">
           <button class="btn ghost small" id="rankingBtn" disabled>🏆 อันดับ</button>
@@ -53,12 +51,13 @@
       </header>
       <main id="app" aria-live="polite"></main>
       <footer class="footer">
-        <span>PYTHON DUNGEON <em>v1.17</em></span
+        <span>PYTHON DUNGEON <em>v1.18</em></span
         ><span>เขียนโค้ดจริง • เรียนรู้ทีละชั้น • พิชิตบอส</span>
         <a href="./assets/audio-v14/CREDITS.txt" target="_blank" rel="noopener">เครดิตเสียง</a>
+        <a href="./assets/audio/MENU-MUSIC-CREDITS.txt" target="_blank" rel="noopener">เครดิตดนตรี</a>
       </footer>
     </div>
     <div id="toast" class="toast" role="status"></div>
-    <script type="module" src="./game.js?v=17"></script>
+    <script type="module" src="./game.js?v=18"></script>
   </body>
 </html>

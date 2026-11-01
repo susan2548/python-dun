@@ -1,0 +1,17 @@
+/* Original identity: the python carries a doorway instead of a generic symbol. */
+.brand{gap:11px;flex-shrink:0;padding:0;min-height:60px}
+.brand-emblem{display:block;width:58px;height:58px;image-rendering:pixelated}
+.brand-wordmark{display:block;width:142px;height:auto;image-rendering:pixelated}
+.brand:hover .brand-emblem{filter:drop-shadow(0 0 8px #9be8c244)}
+.brand:focus-visible{outline:2px solid var(--mint);outline-offset:6px}
+.welcome-copy .welcome-logo{line-height:1;margin:27px 0 18px;font-size:0;text-shadow:none}
+.welcome-logo img{display:block;width:min(100%,500px);height:auto;image-rendering:pixelated}
+.welcome-music{display:flex;align-items:center;gap:12px;max-width:100%;margin:22px 0 0;padding:11px 14px;border:1px solid #d8b77965;background:#0b1b22c9;color:var(--text);text-align:left;font:inherit}
+.welcome-music strong{font-size:14px;font-weight:500;display:block;line-height:1.6;color:var(--guild-paper,var(--text))}
+.welcome-music small{font-size:11px;line-height:1.7;color:var(--muted);display:block;margin-top:2px}
+.music-rune{font-size:25px;color:var(--gold);width:28px;text-align:center}
+.welcome-music:hover{border-color:var(--gold);background:#243630}.welcome-music:active{transform:translateY(1px)}
+.welcome-music:focus-visible{outline:2px solid var(--mint);outline-offset:4px}.welcome-music[aria-pressed="true"]{border-color:#9be8c27a}.welcome-music[aria-pressed="true"] .music-rune{color:var(--mint)}
+.guild-seal{width:44px}.guild-seal img{width:44px;height:44px;display:block}.journey-rune img{width:46px;height:46px;display:block}.gate-sigil img{width:64px;height:64px;vertical-align:middle}.auth-loading .gate-sigil img{margin:auto}
+@media(max-width:1050px){.brand-emblem{width:51px;height:51px}.brand-wordmark{width:123px}.brand{gap:8px}}
+@media(max-width:600px){.brand-emblem{width:48px;height:48px}.brand-wordmark{width:122px}.brand{min-height:50px}.welcome-copy .welcome-logo{margin-top:24px}.welcome-logo img{width:min(100%,400px)}.welcome-music{width:100%;padding:12px}.welcome-music strong{font-size:14px}.welcome-music small{font-size:11px}}

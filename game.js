@@ -8,19 +8,19 @@ import {
   playSfx,
   setMuted,
   switchTrack,
-} from "./audio-engine.js?v=4";
+} from "./audio-engine.js?v=5";
 import { mountSpriteMotion } from "./sprite-motion.js?v=8";
 import { mountCodeEditor } from "./code-editor.js?v=1";
 import { MONSTERS, enemyIntent, attackDamage } from "./combat-rules.js?v=5";
-import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=8";
-import {preloadCombatAudio,playBattleVoice,playRunFeedback,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=5';
+import { playCutscene, playCombatMotion, playPotionMotion, playUtilityMotion, skillIcon } from "./combat-cinema.js?v=9";
+import {preloadCombatAudio,playBattleVoice,playRunFeedback,enemyVoice,voicesEnabled,setVoicesEnabled} from './combat-audio.js?v=6';
 import { prepareItemTurn, SKILLS, STATUS, POTION_HP, POTION_MP, ensureTactics, normalizeSkill, skillFor, chance, accuracy, addStatus, attemptStatus, statusChance, tickDots, expireActionStatuses, advanceCooldowns, consumeFocus, heroDamage, enemyDamage } from "./tactical-engine.js?v=4";
-import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=7";
+import { renderWelcome, openHeroHall, openMerchant, openInn } from "./world-ui.js?v=8";
 import { renderExpeditionMap, updateExpeditionVitals } from "./expedition-map.js?v=3";
 import { closeStatusInspector } from "./status-inspector.js?v=1";
 import { CLASSES, migrateClassBalance } from "./hero-classes.js?v=1";
 import { lessonStars, ensureLessonProgress, recordCorrectAnswer, enemyHpFloor, canClaimVictory } from "./lesson-progress.js?v=2";
-import {learner,mountLearners} from './learners.js?v=2';
+import {learner,mountLearners} from './learners.js?v=3';
 const STORAGE = "python-dungeon-rpg-v1";
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
@@ -136,7 +136,7 @@ function runPython(code, challenge, skillName) {
 function renderIntro() {
   if(!learner.user)return learner.showGate();
   screen='intro'; window.scrollTo(0,0);updateBar();
-  renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,
+  renderWelcome({app,classes:CLASSES,selected,hasSave:!!save.classId,musicTitle:currentTrackName(),onToggleMusic:toggleAudio,
     onSelect:id=>{if(save.activeBattle&&id!==save.classId)return toast('จบการต่อสู้ที่ค้างอยู่ก่อนเปลี่ยนอาชีพ');selected=id;renderIntro();},
     onStart:()=>{
       if(!learner.requireLogin())return;
@@ -148,6 +148,7 @@ function renderIntro() {
     }
   });
   learner.refresh();
+  updateWelcomeMusic();
 }
 function renderMap() {
   if(!learner.requireLogin())return;
@@ -871,7 +872,12 @@ $("#homeBtn").onclick = () => {
   if(save.classId)selected=save.classId;
   renderIntro();
 };
-$("#soundBtn").onclick = async () => {
+function updateWelcomeMusic(){
+  const button=$('#welcomeMusic');if(!button)return;
+  button.setAttribute('aria-pressed',String(!muted));
+  button.querySelector('[data-music-button]').textContent=muted?'เปิดดนตรีหน้าต้อนรับ':'ดนตรีเปิดอยู่ • กดเพื่อปิดเสียง';
+}
+async function toggleAudio(){
   muted = !muted;
   await setMuted(muted);
   $("#soundBtn").textContent = muted ? "♫" : "🔊";
@@ -885,7 +891,9 @@ $("#soundBtn").onclick = async () => {
     : `ปิดเสียง • ${currentTrackName()}`;
   toast(muted ? "ปิดเสียงแล้ว" : `เปิดเพลง: ${currentTrackName()}`);
   if (!muted) {playSfx("ui");if(screen==='battle'){preloadCombatAudio(save.classId);preloadCombatAudio($('.fighter.enemy')?.dataset.kind);}}
-};
+  updateWelcomeMusic();
+}
+$("#soundBtn").onclick=toggleAudio;
 mountLearners({
   getSave:()=>save,persist,showModal,closeModal,toast,
   onAuthGate:()=>{if(screen==='battle'&&battle&&!battle.busy)persist();screen='auth';battle=null;codeEditor=null;closeStatusInspector();updateBar();},

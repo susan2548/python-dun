@@ -1,0 +1,17 @@
+PYTHON DUNGEON — menu and expedition music v1.18
+
+INTRO: Mystical RPG Maker Town Theme
+Music by symphony
+Source: https://opengameart.org/content/mystical-rpg-maker-town-theme
+License: CC0-1.0 — https://creativecommons.org/publicdomain/zero/1.0/
+Changes: Static gain only; re-encoded Ogg Vorbis q4 / 44.1kHz. Original full-length loop, no cut or added fades. Gain -4.3 dB.
+Shipped file: guild-overture.ogg
+
+MAP: RPG Ambience - Exploration
+Music by HitCtrl
+Source: https://opengameart.org/content/rpg-ambience-exploration
+License: CC-BY-3.0 — https://creativecommons.org/licenses/by/3.0/
+Changes: Static gain only; re-encoded Ogg Vorbis q4 / 44.1kHz. Original full-length loop, no cut or added fades. Gain -1.45 dB.
+Shipped file: atlas-exploration.ogg
+
+These are licensed compositions from their original authors. Combat music retains its previous sources.

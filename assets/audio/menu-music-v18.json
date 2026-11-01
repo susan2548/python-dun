@@ -1,0 +1,32 @@
+[
+  {
+    "scene": "intro",
+    "file": "guild-overture.ogg",
+    "title": "Mystical RPG Maker Town Theme",
+    "author": "symphony",
+    "source": "https://opengameart.org/content/mystical-rpg-maker-town-theme",
+    "license": "CC0-1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "seconds": 73.143,
+    "bytes": 928426,
+    "sourceSha256": "f9f85792942af4757b147dd0e488f2b7b870fa005511fc0e3a23d3c51c7f08f8",
+    "sha256": "aa7bc0ad11c4a6ae1d6625d88fb552292f48babb39c754c1060eef8c54123d7a",
+    "gainDb": -4.3,
+    "processing": "Static gain only; re-encoded Ogg Vorbis q4 / 44.1kHz. Original full-length loop, no cut or added fades."
+  },
+  {
+    "scene": "map",
+    "file": "atlas-exploration.ogg",
+    "title": "RPG Ambience - Exploration",
+    "author": "HitCtrl",
+    "source": "https://opengameart.org/content/rpg-ambience-exploration",
+    "license": "CC-BY-3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "seconds": 126.0,
+    "bytes": 2076989,
+    "sourceSha256": "6bd6eb346a6d5b8b3ae745b224f9f5bf8de6c753c359ad291d3535c88ffa7ed7",
+    "sha256": "eeeb008b1c66af139d682631163f0420cffddb14cd6112cee73aff68a88da1a9",
+    "gainDb": -1.45,
+    "processing": "Static gain only; re-encoded Ogg Vorbis q4 / 44.1kHz. Original full-length loop, no cut or added fades."
+  }
+]

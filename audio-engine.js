@@ -85,6 +85,8 @@ let timer;
 let nextStepTime = 0;
 let noiseBuffer;
 const RECORDINGS = {
+  intro: ['guild-overture.ogg','Mystical Town — symphony'],
+  map: ['atlas-exploration.ogg','RPG Ambience – Exploration — HitCtrl'],
   floor0: ['ruins-battle.mp3','Battle — Ted Kerr'],
   floor1: ['bone-march.mp3','Battle RPG Theme — Cleyton Kauffman'],
   floor2: ['venom-rush.mp3','Hard Battle 1 — MintoDog'],
@@ -96,6 +98,7 @@ let recording;
 let mediaEpoch=0;
 let duckUntil=0;
 let duckTimer;
+let recordingFade;
 export function combatAudioRuntime() {
   if(muted)return null;
   ensureAudio();context.resume().catch(()=>{});
@@ -115,7 +118,8 @@ export function duckMusic(seconds=1.8) {
 }
 function stopRecording() {
   mediaEpoch++;
-  if(recording) {recording.pause();recording.removeAttribute('src');recording.load();recording=null;}
+  clearInterval(recordingFade);
+  if(recording) {recording.pause();recording.removeAttribute('src');recording.load();recording.remove();recording=null;}
 }
 function startRecording() {
   stopRecording();
@@ -123,7 +127,22 @@ function startRecording() {
   if(!track||muted) return;
   const epoch=mediaEpoch;
   recording=new Audio('./assets/audio/'+track[0]);
+  recording.id='dungeonMusic';recording.hidden=true;recording.dataset.track=trackKey;
   recording.loop=true; recording.volume=.44; recording.preload='auto';
+  document.body.append(recording);
+  if(trackKey==='intro'||trackKey==='map'){
+    recording.volume=.06;let faded=false;
+    recording.onplaying=()=>{
+      if(faded||epoch!==mediaEpoch)return;faded=true;const started=performance.now();
+      const fadeId=setInterval(()=>{
+        if(epoch!==mediaEpoch||!recording){clearInterval(fadeId);return;}
+        const progress=Math.min(1,(performance.now()-started)/450),target=performance.now() < duckUntil ? .14 : .44;
+        recording.volume=.06+(target-.06)*progress;
+        if(progress===1)clearInterval(fadeId);
+      },30);
+      recordingFade=fadeId;
+    };
+  }
   // Retain synthesized battle audio only as a network-error fallback.
   recording.onerror=()=>{if(epoch===mediaEpoch&&!muted) {nextStepTime=context.currentTime+.05;tick();}};
   recording.play().catch(()=>{});
